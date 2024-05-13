@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package tak.sh.script.v1beta1;
+
+option go_package = "github.com/tak-sh/tak/generated/go/script/v1beta1";
+
+// A way to programmatically control what the headless browser should do.
+message Script {
+  repeated Step steps = 1;
+}
+
+// A single line within a Script.
+message Step {
+  // A top-level referential key for the Step. If not provided, the result is not
+  // stored nor is it accessible by following Steps. If it is provided, any following
+  // Step can refer to the value returned by the Action.
+  optional string id = 1;
+
+  // Provide the action that should be taken for this Step.
+  Action action = 2;
+
+  // Execute the Step if a truthy value is returned.
+  optional string if = 3;
+}
+
+message Action {
+  // A field representing the value of an Action.
+  message Value {
+    // Hardcode the value for the action.
+    string raw = 1;
+  }
+
+  // Click on an element.
+  message MouseClick {
+    string selector = 1;
+  }
+
+  // Input text into a field.
+  message Input {
+    string selector = 1;
+    Value value = 2;
+  }
+
+  // Prompt the user for some data.
+  message PromptUser {
+    Prompt prompt = 1;
+  }
+
+  // Click on an element.
+  optional MouseClick mouse_click = 1 [json_name = "mouse_click"];
+
+  // Input some text into an element.
+  optional Input input = 2;
+
+  // Ask the user for some information.
+  optional PromptUser ask = 4;
+}
+
+message Prompt {
+  // A user-friendly description for what you're asking. This is displayed above the component.
+  optional string description = 1;
+
+  // A user-friendly and short title for the prompt.
+  string title = 2;
+
+  // The component to display to the user.
+  Component component = 3;
+}
+
+// Mutually exclusive set of components that can be displayed to the user. Only a single field
+// can be set.
+message Component {
+  // Choose from a set of predefined options.
+  message Dropdown {
+    message Option {
+      string value = 1;
+    }
+
+    repeated Option options = 1;
+  }
+
+  message Input {
+    enum Type {
+      TEXT = 0;
+      PASSWORD = 1;
+    }
+
+    // Defaults to TEXT.
+    Type type = 1;
+  }
+
+  optional Dropdown dropdown = 1;
+  optional Input input = 2;
+}
