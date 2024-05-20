@@ -1,0 +1,35 @@
+{
+  "$id": "tak.sh.except.Exception.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "enum": [
+            "UNKNOWN",
+            "NOT_FOUND",
+            "INVALID",
+            "INTERNAL",
+            "TIMEOUT",
+            "ALREADY_EXISTS",
+            "ABORTED",
+            "FAILED"
+          ],
+          "title": "Reason",
+          "type": "string"
+        },
+        {
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "type": "integer"
+        }
+      ]
+    }
+  },
+  "title": "Exception",
+  "type": "object"
+}

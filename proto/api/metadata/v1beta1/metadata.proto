@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package tak.sh.api.metadata.v1beta1;
+
+option go_package = "github.com/tak-sh/tak/generated/go/api/metadata/v1beta1";
+
+message Metadata {
+  // The name of the resource.
+  string name = 1;
+  // The targeted version of the resource spec.
+  string version = 2;
+}

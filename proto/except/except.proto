@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package tak.sh.except;
+
+option go_package = "github.com/tak-sh/tak/generated/go/except";
+
+enum Reason {
+  UNKNOWN = 0;
+  NOT_FOUND = 1;
+  INVALID = 2;
+  INTERNAL = 3;
+  TIMEOUT = 4;
+  ALREADY_EXISTS = 5;
+  // The user caused a cancel
+  ABORTED = 6;
+  // Some component failed.
+  FAILED = 7;
+}
+
+message Exception {
+  Reason reason = 1;
+  string message = 2;
+}

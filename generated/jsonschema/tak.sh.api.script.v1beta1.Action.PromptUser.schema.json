@@ -1,0 +1,13 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Action.PromptUser.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Prompt the user for some data.",
+  "properties": {
+    "prompt": {
+      "$ref": "tak.sh.api.script.v1beta1.Prompt.schema.json"
+    }
+  },
+  "title": "Prompt User",
+  "type": "object"
+}

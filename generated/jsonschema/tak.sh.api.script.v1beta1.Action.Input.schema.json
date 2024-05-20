@@ -1,0 +1,17 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Action.Input.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Input text into a field.",
+  "properties": {
+    "selector": {
+      "type": "string"
+    },
+    "value": {
+      "description": "Provide a value for the input action. This could be hardcoded or a variable reference.",
+      "type": "string"
+    }
+  },
+  "title": "Input",
+  "type": "object"
+}

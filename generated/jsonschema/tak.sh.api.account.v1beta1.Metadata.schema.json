@@ -1,0 +1,17 @@
+{
+  "$id": "tak.sh.api.account.v1beta1.Metadata.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "description": "The name of the resource.",
+      "type": "string"
+    },
+    "version": {
+      "description": "The targeted version of the resource spec.",
+      "type": "string"
+    }
+  },
+  "title": "Metadata",
+  "type": "object"
+}

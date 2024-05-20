@@ -11,3 +11,5 @@ plugins:
     opt:
       - require_unimplemented_servers=false
       - paths=source_relative
+  - plugin: buf.build/bufbuild/protoschema-jsonschema
+    out: generated/jsonschema

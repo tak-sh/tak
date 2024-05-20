@@ -1,0 +1,16 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Script.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A way to programmatically control what the headless browser should do.",
+  "properties": {
+    "steps": {
+      "items": {
+        "$ref": "tak.sh.api.script.v1beta1.Step.schema.json"
+      },
+      "type": "array"
+    }
+  },
+  "title": "Script",
+  "type": "object"
+}

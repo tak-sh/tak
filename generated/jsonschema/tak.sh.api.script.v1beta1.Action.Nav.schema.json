@@ -1,0 +1,13 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Action.Nav.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "addr": {
+      "description": "A URL to navigate to.",
+      "type": "string"
+    }
+  },
+  "title": "Nav",
+  "type": "object"
+}

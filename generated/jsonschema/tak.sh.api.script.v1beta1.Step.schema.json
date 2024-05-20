@@ -1,0 +1,22 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Step.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A single line within a Script.",
+  "properties": {
+    "action": {
+      "$ref": "tak.sh.api.script.v1beta1.Action.schema.json",
+      "description": "Provide the action that should be taken for this Step."
+    },
+    "id": {
+      "description": "A top-level referential key for the Step. If not provided, the result is not\n stored nor is it accessible by following Steps. If it is provided, any following\n Step can refer to the value returned by the Action.",
+      "type": "string"
+    },
+    "if": {
+      "description": "Execute the Step if a truthy value is returned.",
+      "type": "string"
+    }
+  },
+  "title": "Step",
+  "type": "object"
+}

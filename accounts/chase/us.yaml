@@ -1,0 +1,49 @@
+metadata:
+  name: chase
+  version: v1beta1
+spec:
+  login_script:
+    steps:
+      - action:
+          nav:
+            addr: https://www.chase.com/
+      - id: username
+        action:
+          ask:
+            prompt:
+              title: Username
+              component:
+                input:
+                  type: PASSWORD
+      - id: password
+        action:
+          ask:
+            prompt:
+              title: Password
+              component:
+                input:
+                  type: PASSWORD
+      - action:
+          input:
+            selector: "#userId-text-input-field"
+            value: "{{ username }}"
+      - action:
+          input:
+            selector: "#password-text-input-field"
+            value: "{{ password }}"
+      - action:
+          mouse_click:
+            selector: "#signin-button"
+      - action:
+          mouse_click:
+            selector: "#header-simplerAuth-dropdownoptions-styledselect"
+      - action:
+          ask:
+            prompt:
+              title: "Select your 2-factor method"
+              component:
+                dropdown:
+                  from:
+                    list_selector: "#ul-list-container-simplerAuth-dropdownoptions-styledselect > li"
+                    iterator: "#container-primary-1-simplerAuth-dropdownoptions-styledselect"
+

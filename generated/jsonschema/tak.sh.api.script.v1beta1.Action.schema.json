@@ -1,0 +1,24 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Action.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "ask": {
+      "$ref": "tak.sh.api.script.v1beta1.Action.PromptUser.schema.json",
+      "description": "Ask the user for some information."
+    },
+    "input": {
+      "$ref": "tak.sh.api.script.v1beta1.Action.Input.schema.json",
+      "description": "Input some text into an element."
+    },
+    "mouse_click": {
+      "$ref": "tak.sh.api.script.v1beta1.Action.MouseClick.schema.json",
+      "description": "Click on an element."
+    },
+    "nav": {
+      "$ref": "tak.sh.api.script.v1beta1.Action.Nav.schema.json"
+    }
+  },
+  "title": "Action",
+  "type": "object"
+}

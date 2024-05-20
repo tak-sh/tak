@@ -1,0 +1,19 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Value.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A dynamic primitive value. All fields are mutually exclusive.",
+  "properties": {
+    "str": {
+      "type": "string"
+    },
+    "str_list": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "title": "Value",
+  "type": "object"
+}

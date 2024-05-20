@@ -1,0 +1,16 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Component.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Mutually exclusive set of components that can be displayed to the user. Only a single field\n can be set.",
+  "properties": {
+    "dropdown": {
+      "$ref": "tak.sh.api.script.v1beta1.Component.Dropdown.schema.json"
+    },
+    "input": {
+      "$ref": "tak.sh.api.script.v1beta1.Component.Input.schema.json"
+    }
+  },
+  "title": "Component",
+  "type": "object"
+}

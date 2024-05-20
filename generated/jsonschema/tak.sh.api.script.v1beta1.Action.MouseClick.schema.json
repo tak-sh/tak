@@ -1,0 +1,17 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Action.MouseClick.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Click on an element.",
+  "properties": {
+    "double": {
+      "description": "If true, the mouse will double click.",
+      "type": "boolean"
+    },
+    "selector": {
+      "type": "string"
+    }
+  },
+  "title": "Mouse Click",
+  "type": "object"
+}
