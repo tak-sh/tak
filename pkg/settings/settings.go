@@ -11,9 +11,11 @@ import (
 var Default Settings
 
 const (
-	DirName     = ".tak"
-	LogDirName  = "logs"
-	LogFilename = "tak.log"
+	DirName            = ".tak"
+	LogDirName         = "logs"
+	LogFilename        = "tak.log"
+	AccountsDirName    = "accounts"
+	AccountDataDirName = "data"
 )
 
 var (
@@ -74,6 +76,8 @@ type Settings interface {
 	ScreenshotDir() string
 	LogFile() string
 	IsDev() bool
+	AccountDir(account string) string
+	AccountDataDir(account string) string
 }
 
 type settings struct {
@@ -81,6 +85,18 @@ type settings struct {
 	SetDir  string
 	Cache   string
 	Log     string
+}
+
+func (s *settings) AccountDataDir(account string) string {
+	d := filepath.Join(s.AccountDir(account), AccountDataDirName)
+	_ = os.MkdirAll(d, os.ModePerm)
+	return d
+}
+
+func (s *settings) AccountDir(account string) string {
+	d := filepath.Join(s.SettingsDir(), AccountsDirName, account)
+	_ = os.MkdirAll(d, os.ModePerm)
+	return d
 }
 
 func (s *settings) LogFile() string {

@@ -38,7 +38,7 @@ func (i *Input) String() string {
 }
 
 func (i *Input) Act(c *headless.Context) error {
-	val := c.RenderTemplate(i.GetValue())
+	val := c.Store.Render(i.GetValue())
 	return chromedp.SendKeys(i.GetSelector(), val).Do(c)
 }
 

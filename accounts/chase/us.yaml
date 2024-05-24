@@ -43,7 +43,14 @@ spec:
               title: "Select your 2-factor method"
               component:
                 dropdown:
+                  merge:
+                    - if: "{{ 'xxx-' not in option.value }}"
+                      option:
+                        disabled: true
+                    - if: "{{ 'Call us' in option.value }}"
+                      option:
+                        hidden: true
                   from:
-                    list_selector: "#ul-list-container-simplerAuth-dropdownoptions-styledselect > li"
-                    iterator: "#container-primary-1-simplerAuth-dropdownoptions-styledselect"
+                    selector: "#ul-list-container-simplerAuth-dropdownoptions-styledselect > li"
+                    iterator: "span[id*='container-primary']"
 

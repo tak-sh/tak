@@ -8,6 +8,13 @@
       "$ref": "tak.sh.api.script.v1beta1.EachExtractor.schema.json",
       "description": "A variable reference that populates the options. If the options field is also set, this\n is appended to it. Useful if you want to dynamically create a dropdown from an arbitrary\n list of options on the page."
     },
+    "merge": {
+      "description": "If specified, merge the specified fields into every option for the Dropdown.",
+      "items": {
+        "$ref": "tak.sh.api.script.v1beta1.Component.Dropdown.OptionMerge.schema.json"
+      },
+      "type": "array"
+    },
     "options": {
       "items": {
         "$ref": "tak.sh.api.script.v1beta1.Component.Dropdown.Option.schema.json"

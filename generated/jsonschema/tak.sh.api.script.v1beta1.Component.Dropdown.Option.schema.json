@@ -3,6 +3,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "disabled": {
+      "description": "If true, the option is not selectable.",
+      "type": "boolean"
+    },
+    "hidden": {
+      "description": "If true, the option is not shown.",
+      "type": "boolean"
+    },
     "value": {
       "description": "A hardcoded value for the option. Accepts a variable reference.",
       "type": "string"

@@ -5,10 +5,10 @@
   "description": "Grabs specific fields for each element of a matching query. This functions like the each function\n in jQuery: https://api.jquery.com/jquery.each/.",
   "properties": {
     "iterator": {
-      "description": "A selector string that is called on every element returned from ListSelector that aims to\n extract the desired value from the element.",
+      "description": "A selector string that is called on every element returned from Selector that aims to\n extract the desired value from the element.",
       "type": "string"
     },
-    "list_selector": {
+    "selector": {
       "description": "A selector string that matches the list of elements.",
       "type": "string"
     }

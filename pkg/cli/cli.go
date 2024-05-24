@@ -6,6 +6,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
+	"os/signal"
 	"strings"
 )
 
@@ -59,6 +60,8 @@ func New(version string) *cli.App {
 			logger := settings.NewLogger(lvl, outputs)
 			context.Context = settings.WithSettings(context.Context, set)
 			context.Context = contexts.WithLogger(context.Context, logger)
+
+			context.Context, _ = signal.NotifyContext(context.Context, os.Interrupt, os.Kill)
 
 			logger.Info("Running command.", slog.String("cmd", strings.Join(context.Args().Slice(), " ")))
 			return nil

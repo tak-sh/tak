@@ -1,0 +1,17 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Component.Dropdown.OptionMerge.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "if": {
+      "description": "If truthy, the Option field is applied to every Dropdown option.",
+      "type": "string"
+    },
+    "option": {
+      "$ref": "tak.sh.api.script.v1beta1.Component.Dropdown.Option.schema.json",
+      "description": "The fields to merge into the Dropdown options."
+    }
+  },
+  "title": "Option Merge",
+  "type": "object"
+}

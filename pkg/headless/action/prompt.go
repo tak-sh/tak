@@ -8,7 +8,6 @@ import (
 	"github.com/tak-sh/tak/pkg/headless/component"
 	"github.com/tak-sh/tak/pkg/internal/grpcutils"
 	"github.com/tak-sh/tak/pkg/validate"
-	"google.golang.org/protobuf/proto"
 )
 
 var _ Action = &PromptAction{}
@@ -47,20 +46,21 @@ func (p *PromptAction) String() string {
 }
 
 func (p *PromptAction) Act(ctx *headless.Context) error {
-	comp, err := p.Prompt.Component.Render(ctx)
+	model := p.Prompt.Component.Render(ctx, &component.Props{
+		ID:          p.GetID(),
+		Title:       component.TitleStyle.Render(p.prompt.GetPrompt().GetTitle()),
+		Description: component.DescriptionStyle.Render(p.prompt.GetPrompt().GetDescription()),
+	})
+	if model == nil {
+		return nil
+	}
+
+	v, err := ctx.Stream.Render(ctx, model)
 	if err != nil {
 		return err
 	}
 
-	cl := proto.Clone(p.prompt).(*v1beta1.Prompt)
-	cl.Component = comp.ToProto()
-
-	v, err := ctx.Stream.SendPrompt(ctx, cl)
-	if err != nil {
-		return err
-	}
-
-	ctx.Store.Set(p.ID, GetValue(v))
+	ctx.Store.Set(p.ID, GetValue(v.Value))
 
 	return nil
 }

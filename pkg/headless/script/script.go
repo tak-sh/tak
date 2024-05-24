@@ -7,6 +7,7 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	"github.com/chromedp/chromedp/device"
+	"github.com/eddieowens/opts"
 	"github.com/go-rod/stealth"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/contexts"
@@ -15,9 +16,11 @@ import (
 	"github.com/tak-sh/tak/pkg/headless/action"
 	"github.com/tak-sh/tak/pkg/internal/grpcutils"
 	"github.com/tak-sh/tak/pkg/internal/ptr"
+	"github.com/tak-sh/tak/pkg/renderer"
 	"github.com/tak-sh/tak/pkg/validate"
 	"log/slog"
 	"strconv"
+	"time"
 )
 
 var desktop = device.Info{
@@ -28,17 +31,45 @@ var desktop = device.Info{
 	Scale:     1.0,
 }
 
-func Run(c *headless.Context, s *Script) error {
-	logger := contexts.GetLogger(c)
+type RunOpts struct {
+	ScreenshotDir string
+	EventQueue    EventQueue
+}
 
-	opts := append(
+func WithScreenshotsDir(dir string) opts.Opt[RunOpts] {
+	return func(c *RunOpts) {
+		c.ScreenshotDir = dir
+	}
+}
+
+func WithEventQueue(q EventQueue) opts.Opt[RunOpts] {
+	return func(r *RunOpts) {
+		r.EventQueue = q
+	}
+}
+
+func (c RunOpts) DefaultOptions() RunOpts {
+	return RunOpts{}
+}
+
+func Run(ctx context.Context, s *Script, str renderer.Stream, o ...opts.Opt[RunOpts]) (context.Context, error) {
+	opt := opts.DefaultApply(o...)
+	ctx, cancel := context.WithCancelCause(ctx)
+
+	logger := contexts.GetLogger(ctx)
+	c, err := headless.NewContext(ctx, str, headless.ContextOpts{
+		ScreenshotDir: opt.ScreenshotDir,
+	})
+
+	chromeOpts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
 	)
-	ctx, execCancel := chromedp.NewExecAllocator(c, opts...)
-	defer execCancel()
+	execCtx, execCancel := chromedp.NewExecAllocator(ctx, chromeOpts...)
 
-	ctx, cancel := chromedp.NewContext(ctx)
-	defer cancel()
+	chromeCtx, chromeCancel := chromedp.NewContext(execCtx)
+	if err != nil {
+		return nil, err
+	}
 
 	acts := []chromedp.Action{
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -48,8 +79,8 @@ func Run(c *headless.Context, s *Script) error {
 		chromedp.Emulate(desktop),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			c.Context = ctx
-
 			var pageContent string
+			n := len(s.Steps)
 			for i := range s.Steps {
 				v := s.Steps[i]
 				logger.Info("Running action.", slog.String("action", v.Action.String()))
@@ -60,16 +91,39 @@ func Run(c *headless.Context, s *Script) error {
 						logger.Error("Failed to load page.", slog.String("err", err.Error()))
 					} else {
 						c.Store.Set("page", pageContent)
+
+						if s.SavePage {
+							err = c.SaveHTML(c.Context, v.step.GetId(), pageContent)
+							if err != nil {
+								logger.Error("Failed to save the page.", slog.String("err", err.Error()), slog.String("step", v.step.GetId()))
+								return err
+							}
+						}
+					}
+
+					if s.ScreenShotBefore {
+						screenErr := c.Screenshot(c.Context, v.step.GetId())
+						if screenErr != nil {
+							logger.Error("Failed to take screenshot.", slog.String("id", v.step.GetId()), slog.String("err", screenErr.Error()))
+						}
 					}
 				}
 
-				err := v.Action.Act(c)
+				if opt.EventQueue != nil {
+					opt.EventQueue <- &ChangeStepEvent{
+						Step:  v,
+						Idx:   i,
+						Total: n,
+					}
+				}
+
+				err := runAction(c, v.Action, 10*time.Second)
 				errored := err != nil
 				if errored {
 					logger.Error("Failed to run step.", slog.String("id", v.step.GetId()), slog.String("err", err.Error()))
 				}
 
-				if errored || s.Debug {
+				if errored || s.ScreenShotAfter {
 					screenErr := c.Screenshot(c.Context, v.step.GetId())
 					if screenErr != nil {
 						logger.Error("Failed to take screenshot.", slog.String("id", v.step.GetId()), slog.String("err", screenErr.Error()))
@@ -83,12 +137,36 @@ func Run(c *headless.Context, s *Script) error {
 		}),
 	}
 
-	err := chromedp.Run(ctx, acts...)
-	if err != nil {
-		return err
-	}
+	go func() {
+		var err error
+		defer func() {
+			cancel(err)
+			chromeCancel()
+			execCancel()
+		}()
+		err = chromedp.Run(chromeCtx, acts...)
+		return
+	}()
 
-	return nil
+	return ctx, nil
+}
+
+func runAction(c *headless.Context, act action.Action, to time.Duration) error {
+	if _, ok := act.(*action.PromptAction); ok {
+		return act.Act(c)
+	}
+	var toCancel context.CancelFunc
+	oldCtx := c.Context
+	c.Context, toCancel = context.WithTimeout(c.Context, to)
+	defer func() {
+		toCancel()
+		c.Context = oldCtx
+	}()
+	err := act.Act(c)
+	if errors.Is(err, context.DeadlineExceeded) {
+		return except.NewTimeout("took too long")
+	}
+	return err
 }
 
 func New(s *v1beta1.Script) (*Script, error) {
@@ -160,8 +238,10 @@ var _ grpcutils.ProtoWrapper[*v1beta1.Script] = &Script{}
 var _ validate.Validator = &Script{}
 
 type Script struct {
-	Steps []*Step
-	Debug bool
+	Steps            []*Step
+	ScreenShotBefore bool
+	ScreenShotAfter  bool
+	SavePage         bool
 
 	script *v1beta1.Script
 }

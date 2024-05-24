@@ -1,20 +1,18 @@
 package cli
 
 import (
+	"context"
 	"errors"
-	"github.com/tak-sh/tak/generated/go/api/account/v1beta1"
+	"github.com/tak-sh/tak/pkg/account"
 	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/except"
-	"github.com/tak-sh/tak/pkg/headless"
 	"github.com/tak-sh/tak/pkg/headless/script"
-	"github.com/tak-sh/tak/pkg/prompt"
-	"github.com/tak-sh/tak/pkg/protoenc"
+	"github.com/tak-sh/tak/pkg/renderer"
 	"github.com/tak-sh/tak/pkg/settings"
 	"github.com/tak-sh/tak/pkg/ui"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
-	"path/filepath"
 )
 
 func NewAccountCommand() *cli.Command {
@@ -98,16 +96,9 @@ func NewAccountSyncCommand() *cli.Command {
 			fp := cmd.Args().First()
 			logger := contexts.GetLogger(cmd.Context)
 
-			_, err := os.Stat(fp)
+			acct, err := account.LoadFile(fp)
 			if err != nil {
-				return errors.Join(except.NewNotFound("failed to find account file %s", fp), err)
-			}
-
-			acct := new(v1beta1.Account)
-			dir, name := filepath.Split(fp)
-			err = protoenc.UnmarshalFile(acct, name, os.DirFS(dir))
-			if err != nil {
-				return errors.Join(except.NewInvalid("%s is not a valid account file", fp), err)
+				return err
 			}
 
 			s, err := script.New(acct.GetSpec().GetLoginScript())
@@ -115,28 +106,30 @@ func NewAccountSyncCommand() *cli.Command {
 				return errors.Join(except.NewInvalid("failed to compile your login script"), err)
 			}
 
-			s.Debug = cmd.Bool("debug")
+			s.ScreenShotAfter = cmd.Bool("debug")
 
-			str := prompt.NewStream()
-			ct, err := headless.NewContext(cmd.Context, str, headless.WithScreenshotsDir(ss))
-			if err != nil {
-				return err
-			}
+			str := renderer.NewStream()
+			eq := script.NewEventQueue()
 
-			user := ui.NewReadWriterUI(os.Stdin, os.Stdout, str)
+			bubble := ui.NewBubbleUI(acct, str, eq)
 
-			_, err = user.Start(cmd.Context)
+			uiCtx, err := bubble.Start(cmd.Context, os.Stdin, os.Stdout)
 			if err != nil {
 				logger.Error("Failed to start the UI.", slog.String("err", err.Error()))
 				return errors.Join(except.NewInternal("failed to start the UI"), err)
 			}
 
-			err = script.Run(ct, s)
+			scriptCtx, err := script.Run(cmd.Context, s, str, script.WithScreenshotsDir(ss), script.WithEventQueue(eq))
 			if err != nil {
 				return err
 			}
 
-			return nil
+			select {
+			case <-uiCtx.Done():
+				return context.Cause(uiCtx)
+			case <-scriptCtx.Done():
+				return context.Cause(scriptCtx)
+			}
 		},
 	}
 	return cmd

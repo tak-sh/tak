@@ -86,13 +86,31 @@ message Component {
     message Option {
       // A hardcoded value for the option. Accepts a variable reference.
       string value = 1;
+
+      // If true, the option is not shown.
+      optional bool hidden = 2;
+
+      // If true, the option is not selectable.
+      optional bool disabled = 3;
+    }
+
+    message OptionMerge {
+      // If truthy, the Option field is applied to every Dropdown option.
+      optional string if = 1;
+
+      // The fields to merge into the Dropdown options.
+      Option option = 2;
     }
 
     repeated Option options = 1;
+
     // A variable reference that populates the options. If the options field is also set, this
     // is appended to it. Useful if you want to dynamically create a dropdown from an arbitrary
     // list of options on the page.
     optional EachExtractor from = 2;
+
+    // If specified, merge the specified fields into every option for the Dropdown.
+    repeated OptionMerge merge = 3;
   }
 
   message Input {
@@ -119,9 +137,9 @@ message Value {
 // in jQuery: https://api.jquery.com/jquery.each/.
 message EachExtractor {
   // A selector string that matches the list of elements.
-  string list_selector = 1 [json_name = "list_selector"];
+  string selector = 1;
 
-  // A selector string that is called on every element returned from ListSelector that aims to
+  // A selector string that is called on every element returned from Selector that aims to
   // extract the desired value from the element.
   string iterator = 2;
 }
