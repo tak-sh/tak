@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/chromedp/chromedp"
 	"github.com/flosch/pongo2/v6"
+	"github.com/goccy/go-json"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/renderer"
 	"os"
@@ -111,6 +112,17 @@ func (s Store) Merge(m ...Store) Store {
 	}
 
 	return out
+}
+
+func JSONVal(o any) any {
+	b, _ := json.Marshal(o)
+	if len(b) == 0 {
+		return o
+	}
+
+	m := map[string]any{}
+	_ = json.Unmarshal(b, &m)
+	return m
 }
 
 func IsTruthy(a any) bool {

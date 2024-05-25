@@ -1,7 +1,9 @@
 package component
 
 import (
+	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -12,6 +14,7 @@ import (
 	"github.com/tak-sh/tak/pkg/internal/ptr"
 	"github.com/tak-sh/tak/pkg/renderer"
 	"google.golang.org/protobuf/proto"
+	"io"
 	"log/slog"
 	"strings"
 )
@@ -73,7 +76,8 @@ func (d *Dropdown) Render(ctx *headless.Context, props *Props) renderer.Model {
 
 	for _, mer := range cl.GetMerge() {
 		for _, opt := range cl.GetOptions() {
-			ifVal := ctx.Store.Merge(headless.Store{"option": opt}).Render(mer.GetIf())
+			store := ctx.Store.Merge(headless.Store{"option": headless.JSONVal(opt)})
+			ifVal := store.Render(mer.GetIf())
 			if headless.IsTruthy(ifVal) {
 				proto.Merge(opt, mer.GetOption())
 			}
@@ -110,14 +114,27 @@ var _ renderer.Model = &DropdownModel{}
 
 func newDropdownModel(comp *v1beta1.Component_Dropdown, props *Props) *DropdownModel {
 	items := make([]list.Item, 0, len(comp.GetOptions()))
+	displayIdx := 1
 	for i := range comp.GetOptions() {
 		v := comp.Options[i]
-		items = append(items, &dropdownItem{comp: v})
+		if v.GetHidden() {
+			continue
+		}
+
+		item := &dropdownItem{comp: v, idx: i}
+		if !v.GetDisabled() {
+			item.displayIdx = displayIdx
+			displayIdx++
+		}
+
+		items = append(items, item)
 	}
+
+	li := list.New(items, &dropdownItemDelegate{}, 0, len(items)*2)
 
 	return &DropdownModel{
 		Props: props,
-		List:  list.New(items, list.NewDefaultDelegate(), 0, 0),
+		List:  li,
 		Comp:  comp,
 	}
 }
@@ -129,6 +146,9 @@ type DropdownModel struct {
 }
 
 func (d *DropdownModel) Init() tea.Cmd {
+	if d.Comp.Options[d.List.Index()].GetDisabled() {
+		d.List.CursorDown()
+	}
 	return nil
 }
 
@@ -142,6 +162,27 @@ func (d *DropdownModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if ok {
 			t(d.Props.ID, &v1beta1.Value{Str: ptr.Ptr(v.comp.Value)})
 		}
+	case tea.KeyMsg:
+		idx := d.List.Index()
+		if !d.Comp.Options[idx].GetDisabled() {
+			break
+		}
+		halt := idx == len(d.Comp.Options)-1 || idx == 0
+		up := key.Matches(t, list.DefaultKeyMap().CursorUp)
+		var direc func()
+		if halt {
+			if up {
+				direc = d.List.CursorDown
+			} else {
+				direc = d.List.CursorUp
+			}
+		} else if up {
+			direc = d.List.CursorUp
+		} else {
+			direc = d.List.CursorDown
+		}
+
+		direc()
 	}
 
 	return d, cmd
@@ -151,10 +192,52 @@ func (d *DropdownModel) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, d.Props.Title, d.Props.Description, d.List.View())
 }
 
+var _ list.ItemDelegate = &dropdownItemDelegate{}
+
+type dropdownItemDelegate struct {
+}
+
+func (d *dropdownItemDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	i, ok := item.(*dropdownItem)
+	if !ok {
+		return
+	}
+
+	var str string
+	if i.comp.GetDisabled() {
+		str = i.comp.Value
+	} else {
+		str = fmt.Sprintf("%d. %s", i.displayIdx, i.comp.Value)
+	}
+
+	fn := DropdownItemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return SelectedDropdownItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	_, _ = fmt.Fprint(w, fn(str))
+}
+
+func (d *dropdownItemDelegate) Height() int {
+	return 1
+}
+
+func (d *dropdownItemDelegate) Spacing() int {
+	return 0
+}
+
+func (d *dropdownItemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd {
+	return nil
+}
+
 var _ list.Item = &dropdownItem{}
 
 type dropdownItem struct {
-	comp *v1beta1.Component_Dropdown_Option
+	idx        int
+	displayIdx int
+	comp       *v1beta1.Component_Dropdown_Option
 }
 
 func (d *dropdownItem) FilterValue() string {

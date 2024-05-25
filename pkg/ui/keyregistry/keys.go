@@ -37,15 +37,15 @@ var DefaultKeys = &KeyMap{
 	),
 	Down: key.NewBinding(
 		key.WithKeys("down"),
-		key.WithHelp("↑", "move down"),
+		key.WithHelp("↓", "move down"),
 	),
 	Left: key.NewBinding(
-		key.WithKeys("up"),
-		key.WithHelp("↑", "move left"),
+		key.WithKeys("left"),
+		key.WithHelp("←", "move left"),
 	),
 	Right: key.NewBinding(
-		key.WithKeys("up"),
-		key.WithHelp("↑", "move right"),
+		key.WithKeys("right"),
+		key.WithHelp("→", "move right"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
