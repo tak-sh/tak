@@ -33,7 +33,7 @@ type ui struct {
 }
 
 func (u *ui) Start(ctx context.Context, r io.Reader, w io.Writer) (context.Context, error) {
-	app := newBubbleApp(func(s *SubmitEvent) {
+	app := NewApp(func(s *SubmitEvent) {
 		u.Stream.Respond(&renderer.Response{
 			ID:    s.ID,
 			Value: s.Val,
@@ -95,28 +95,4 @@ func (u *ui) Start(ctx context.Context, r io.Reader, w io.Writer) (context.Conte
 	}()
 
 	return ctx, nil
-}
-
-func RenderAll[T tea.Model, S ~[]T](mods S) []string {
-	out := make([]string, 0, len(mods))
-	for _, v := range mods {
-		out = append(out, v.View())
-	}
-	return out
-}
-
-func UpdateAll(msg tea.Msg, mods []tea.Model) tea.Cmd {
-	cmds := make([]tea.Cmd, len(mods))
-	for i, v := range mods {
-		mods[i], cmds[i] = v.Update(msg)
-	}
-	return tea.Batch(cmds...)
-}
-
-func InitAll[T tea.Model, S ~[]T](mods S) tea.Cmd {
-	cmds := make([]tea.Cmd, len(mods))
-	for i, v := range mods {
-		cmds[i] = v.Init()
-	}
-	return tea.Batch(cmds...)
 }

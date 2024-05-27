@@ -6,10 +6,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/headless/component"
+	"github.com/tak-sh/tak/pkg/internal/bubbleutils"
 	"github.com/tak-sh/tak/pkg/ui/keyregistry"
 )
 
-var _ tea.Model = &bubbleApp{}
+var _ tea.Model = &App{}
 
 type SubmitEvent struct {
 	ID  string
@@ -18,8 +19,8 @@ type SubmitEvent struct {
 
 type OnSubmitFunc func(s *SubmitEvent)
 
-func newBubbleApp(onSubmit OnSubmitFunc, msg string) *bubbleApp {
-	out := &bubbleApp{
+func NewApp(onSubmit OnSubmitFunc, msg string) *App {
+	out := &App{
 		Children:               []tea.Model{},
 		OnSubmit:               onSubmit,
 		Spinner:                NewSpinner(),
@@ -33,12 +34,13 @@ func newBubbleApp(onSubmit OnSubmitFunc, msg string) *bubbleApp {
 	return out
 }
 
-type bubbleApp struct {
+type App struct {
 	Children               []tea.Model
 	OnSubmit               OnSubmitFunc
 	Spinner                *Spinner
 	ProgressMessage        string
 	DefaultProgressMessage string
+	OnReady                chan bool
 
 	showSpinner  bool
 	help         *helpModel
@@ -46,11 +48,11 @@ type bubbleApp struct {
 	windowHeight int
 }
 
-func (b *bubbleApp) Init() tea.Cmd {
-	return InitAll(append(b.Children, b.Spinner, b.help))
+func (b *App) Init() tea.Cmd {
+	return bubbleutils.InitAll(append(b.Children, b.Spinner, b.help))
 }
 
-func (b *bubbleApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (b *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	defer func() {
 		b.showSpinner = len(b.Children) == 0
 	}()
@@ -62,7 +64,7 @@ func (b *bubbleApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if key.Matches(t, keyregistry.DefaultKeys.Quit) {
 			return b, tea.Quit
 		} else if key.Matches(t, keyregistry.DefaultKeys.Submit) {
-			cmd := UpdateAll(component.SyncStateMsg(func(id string, v *v1beta1.Value) {
+			cmd := bubbleutils.UpdateAll(component.SyncStateMsg(func(id string, v *v1beta1.Value) {
 				b.OnSubmit(&SubmitEvent{
 					ID:  id,
 					Val: v,
@@ -74,26 +76,26 @@ func (b *bubbleApp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case SetChildrenMsg:
 		b.Children = t.Models
-		return b, InitAll(b.Children)
+		return b, bubbleutils.InitAll(b.Children)
 	case AppendChildrenMsg:
 		b.Children = append(b.Children, t.Models...)
-		return b, InitAll(b.Children)
+		return b, bubbleutils.InitAll(b.Children)
 	case UpdateProgressMsg:
 		b.ProgressMessage = t.Msg
 	}
 
-	cmd := UpdateAll(msg, append(b.Children, b.help, b.Spinner))
+	cmd := bubbleutils.UpdateAll(msg, append(b.Children, b.help, b.Spinner))
 
 	return b, cmd
 }
 
-func (b *bubbleApp) View() string {
+func (b *App) View() string {
 	body := make([]string, 0, len(b.Children)+1)
 
 	if b.showSpinner {
 		body = append(body, lipgloss.JoinHorizontal(lipgloss.Left, b.Spinner.View(), ProgressMessageStyle.Render(b.ProgressMessage)))
 	} else {
-		body = append(body, lipgloss.JoinVertical(lipgloss.Left, RenderAll(b.Children)...))
+		body = append(body, lipgloss.JoinVertical(lipgloss.Left, bubbleutils.RenderAll(b.Children)...))
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, append(body, b.help.View())...)
