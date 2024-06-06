@@ -7,6 +7,9 @@
       "$ref": "tak.sh.api.script.v1beta1.Action.PromptUser.schema.json",
       "description": "Ask the user for some information."
     },
+    "branch": {
+      "$ref": "tak.sh.api.script.v1beta1.Action.Branch.schema.json"
+    },
     "input": {
       "$ref": "tak.sh.api.script.v1beta1.Action.Input.schema.json",
       "description": "Input some text into an element."

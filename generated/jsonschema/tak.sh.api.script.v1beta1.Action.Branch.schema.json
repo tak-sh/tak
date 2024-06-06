@@ -1,0 +1,21 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Action.Branch.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A group of actions to execute.",
+  "properties": {
+    "if": {
+      "description": "If the field is truthy, this Branch will be taken.",
+      "type": "string"
+    },
+    "steps": {
+      "description": "The steps that are executed as part of this Branch",
+      "items": {
+        "$ref": "tak.sh.api.script.v1beta1.Step.schema.json"
+      },
+      "type": "array"
+    }
+  },
+  "title": "Branch",
+  "type": "object"
+}

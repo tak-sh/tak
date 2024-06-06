@@ -1,0 +1,15 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.HTMLNodeTemplateData.Attribute.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "namespace": {
+      "type": "string"
+    },
+    "val": {
+      "type": "string"
+    }
+  },
+  "title": "Attribute",
+  "type": "object"
+}

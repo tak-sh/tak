@@ -6,7 +6,7 @@ import (
 	"github.com/chromedp/chromedp"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/except"
-	"github.com/tak-sh/tak/pkg/headless"
+	"github.com/tak-sh/tak/pkg/headless/engine"
 	"net/url"
 )
 
@@ -39,7 +39,7 @@ func (n *Nav) String() string {
 	return fmt.Sprintf("navigating to %s", n.GetAddr())
 }
 
-func (n *Nav) Act(ctx *headless.Context) error {
+func (n *Nav) Act(ctx *engine.Context) error {
 	return chromedp.Navigate(n.GetAddr()).Do(ctx)
 }
 

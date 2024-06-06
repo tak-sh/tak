@@ -2,14 +2,10 @@ package component
 
 import (
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
-	"github.com/tak-sh/tak/pkg/headless"
-	"github.com/tak-sh/tak/pkg/internal/grpcutils"
+	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/renderer"
+	"github.com/tak-sh/tak/pkg/utils/grpcutils"
 	"github.com/tak-sh/tak/pkg/validate"
-)
-
-const (
-	PageKey = "page"
 )
 
 type Props struct {
@@ -21,7 +17,7 @@ type Props struct {
 type Component interface {
 	validate.Validator
 	grpcutils.ProtoWrapper[*v1beta1.Component]
-	Render(c *headless.Context, p *Props) renderer.Model
+	Render(c *engine.Context, p *Props) renderer.Model
 }
 
 func New(c *v1beta1.Component) Component {

@@ -5,7 +5,7 @@
   "description": "Choose from a set of predefined options.",
   "properties": {
     "from": {
-      "$ref": "tak.sh.api.script.v1beta1.EachExtractor.schema.json",
+      "$ref": "tak.sh.api.script.v1beta1.Component.Dropdown.FromSpec.schema.json",
       "description": "A variable reference that populates the options. If the options field is also set, this\n is appended to it. Useful if you want to dynamically create a dropdown from an arbitrary\n list of options on the page."
     },
     "merge": {

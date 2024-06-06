@@ -3,6 +3,8 @@ metadata:
   version: v1beta1
 spec:
   login_script:
+    is_done:
+      if: "{{ 'web/auth/dashboard#/dashboard/overview' in browser.url }}"
     steps:
       - action:
           nav:
@@ -24,13 +26,16 @@ spec:
                 input:
                   type: PASSWORD
       - action:
+          mouse_click:
+            selector: "input[id*='input-rememberMe']"
+      - action:
           input:
             selector: "#userId-text-input-field"
-            value: "{{ username }}"
+            value: "{{ step.username }}"
       - action:
           input:
             selector: "#password-text-input-field"
-            value: "{{ password }}"
+            value: "{{ step.password }}"
       - action:
           mouse_click:
             selector: "#signin-button"
@@ -38,19 +43,53 @@ spec:
           mouse_click:
             selector: "#header-simplerAuth-dropdownoptions-styledselect"
       - action:
-          ask:
-            prompt:
-              title: "Select your 2-factor method"
-              component:
-                dropdown:
-                  merge:
-                    - if: "{{ 'xxx-' not in option.value }}"
-                      option:
-                        disabled: true
-                    - if: "{{ 'Call us' in option.value }}"
-                      option:
-                        hidden: true
-                  from:
-                    selector: "#ul-list-container-simplerAuth-dropdownoptions-styledselect > li"
-                    iterator: "span[id*='container-primary']"
-
+          branch:
+            if: "{{ 'We don't recognize this device' in browser.content }}"
+            steps:
+              - id: mfa
+                action:
+                  ask:
+                    prompt:
+                      title: "Select your 2-factor method"
+                      component:
+                        dropdown:
+                          merge:
+                            - if: "{{ not ('xxx-' in option.text) }}"
+                              option:
+                                disabled: true
+                            - if: "{{ 'Call us' in option.text }}"
+                              option:
+                                hidden: true
+                          from:
+                            selector:
+                              list_selector: "#ul-list-container-simplerAuth-dropdownoptions-styledselect > li"
+                              iterator: "span[id*='container-primary']"
+                            mapper:
+                              value: "{{ element.attrs.id.val }}"
+                              text: "{{ element.data }}"
+              - action:
+                  mouse_click:
+                    selector: "a > span[id='{{ step.mfa }}']"
+              - action:
+                  mouse_click:
+                    selector: "button[id*='requestIdentificationCode-sm']"
+              - id: otp
+                action:
+                  ask:
+                    prompt:
+                      title: OTP Code
+                      description: Please enter the OTP code sent to you
+                      component:
+                        input:
+                          type: PASSWORD
+              - action:
+                  input:
+                    selector: "input[id*='otpcode_input-input-field']"
+                    value: "{{ step.otp }}"
+              - action:
+                  input:
+                    selector: "input[id*='password_input-input-field']"
+                    value: "{{ step.password }}"
+              - action:
+                  mouse_click:
+                    selector: "button[id*='log_on_to_landing_page-sm']"

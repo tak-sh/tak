@@ -23,12 +23,12 @@ func EqualProtos[T proto.Message, S ~[]T](expected, actual S) []string {
 	return out
 }
 
-func AllEmpty[T comparable](s *suite.Suite, t []T) bool {
+func AllEmpty[T comparable](s *suite.Suite, t []T, args ...any) bool {
 	zeroSl := make([]T, 0, len(t))
 	for range t {
 		var zero T
 		zeroSl = append(zeroSl, zero)
 	}
 
-	return s.Equal(zeroSl, t)
+	return s.Equal(zeroSl, t, args...)
 }

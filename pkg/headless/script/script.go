@@ -12,11 +12,11 @@ import (
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/except"
-	"github.com/tak-sh/tak/pkg/headless"
 	"github.com/tak-sh/tak/pkg/headless/action"
-	"github.com/tak-sh/tak/pkg/internal/grpcutils"
-	"github.com/tak-sh/tak/pkg/internal/ptr"
+	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/renderer"
+	"github.com/tak-sh/tak/pkg/utils/grpcutils"
+	"github.com/tak-sh/tak/pkg/utils/ptr"
 	"github.com/tak-sh/tak/pkg/validate"
 	"log/slog"
 	"strconv"
@@ -32,37 +32,47 @@ var desktop = device.Info{
 }
 
 type RunOpts struct {
-	ScreenshotDir string
-	EventQueue    EventQueue
+	StartingStep int
+	Store        *engine.TemplateData
+	PreRun       []chromedp.Action
 }
 
-func WithScreenshotsDir(dir string) opts.Opt[RunOpts] {
-	return func(c *RunOpts) {
-		c.ScreenshotDir = dir
-	}
-}
-
-func WithEventQueue(q EventQueue) opts.Opt[RunOpts] {
-	return func(r *RunOpts) {
-		r.EventQueue = q
-	}
-}
-
-func (c RunOpts) DefaultOptions() RunOpts {
+func (r RunOpts) DefaultOptions() RunOpts {
 	return RunOpts{}
 }
 
+func WithPreRunActions(act ...chromedp.Action) opts.Opt[RunOpts] {
+	return func(r *RunOpts) {
+		r.PreRun = append(r.PreRun, act...)
+	}
+}
+
+func WithStartingStep(i int) opts.Opt[RunOpts] {
+	return func(r *RunOpts) {
+		r.StartingStep = i
+	}
+}
+
+func WithStore(st *engine.TemplateData) opts.Opt[RunOpts] {
+	return func(r *RunOpts) {
+		r.Store = st
+	}
+}
+
 func Run(ctx context.Context, s *Script, str renderer.Stream, o ...opts.Opt[RunOpts]) (context.Context, error) {
-	opt := opts.DefaultApply(o...)
 	ctx, cancel := context.WithCancelCause(ctx)
 
+	op := opts.DefaultApply(o...)
 	logger := contexts.GetLogger(ctx)
-	c, err := headless.NewContext(ctx, str, headless.ContextOpts{
-		ScreenshotDir: opt.ScreenshotDir,
+	c, err := engine.NewContext(ctx, str, engine.ContextOpts{
+		ScreenshotDir: s.ScreenshotsDir,
 	})
+	c.TemplateData = c.TemplateData.Merge(op.Store)
 
 	chromeOpts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", false),
+		chromedp.UserDataDir("./data"),
 	)
 	execCtx, execCancel := chromedp.NewExecAllocator(ctx, chromeOpts...)
 
@@ -77,65 +87,70 @@ func Run(ctx context.Context, s *Script, str renderer.Stream, o ...opts.Opt[RunO
 			return err
 		}),
 		chromedp.Emulate(desktop),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			c.Context = ctx
-			var pageContent string
-			n := len(s.Steps)
-			for i := range s.Steps {
-				v := s.Steps[i]
-				logger.Info("Running action.", slog.String("action", v.Action.String()))
+	}
 
-				if i > 0 {
-					err := chromedp.OuterHTML("html", &pageContent).Do(ctx)
-					if err != nil {
-						logger.Error("Failed to load page.", slog.String("err", err.Error()))
-					} else {
-						c.Store.Set("page", pageContent)
+	acts = append(acts, op.PreRun...)
+	acts = append(acts, chromedp.ActionFunc(func(ctx context.Context) error {
+		c.Context = ctx
+		n := len(s.Steps)
 
-						if s.SavePage {
-							err = c.SaveHTML(c.Context, v.step.GetId(), pageContent)
-							if err != nil {
-								logger.Error("Failed to save the page.", slog.String("err", err.Error()), slog.String("step", v.step.GetId()))
-								return err
-							}
-						}
-					}
+		toRedact := make([]engine.DOMDataWriter, 0, len(s.Steps))
 
-					if s.ScreenShotBefore {
-						screenErr := c.Screenshot(c.Context, v.step.GetId())
-						if screenErr != nil {
-							logger.Error("Failed to take screenshot.", slog.String("id", v.step.GetId()), slog.String("err", screenErr.Error()))
-						}
-					}
+		for i := op.StartingStep; i < n; i++ {
+			v := s.Steps[i]
+			logger.Info("Running action.", slog.String("action", v.Action.String()))
+
+			sel, ok := action.AsDOMReader(v.Action)
+			if ok {
+				toRedact = append(toRedact, sel)
+			}
+
+			if i > 0 {
+				err := chromedp.OuterHTML("html", &c.TemplateData.Browser.Content).Do(ctx)
+				if err != nil {
+					logger.Error("Failed to load page.", slog.String("err", err.Error()))
 				}
 
-				if opt.EventQueue != nil {
-					opt.EventQueue <- &ChangeStepEvent{
-						Step:  v,
-						Idx:   i,
-						Total: n,
-					}
+				var u string
+				err = chromedp.Location(&u).Do(ctx)
+				if err != nil {
+					logger.Error("Failed to get browser URL.")
 				}
 
-				err := runAction(c, v.Action, 10*time.Second)
-				errored := err != nil
-				if errored {
-					logger.Error("Failed to run step.", slog.String("id", v.step.GetId()), slog.String("err", err.Error()))
-				}
-
-				if errored || s.ScreenShotAfter {
-					screenErr := c.Screenshot(c.Context, v.step.GetId())
+				if s.ScreenShotBefore {
+					_, screenErr := c.Screenshot(c.Context, v.step.GetId())
 					if screenErr != nil {
 						logger.Error("Failed to take screenshot.", slog.String("id", v.step.GetId()), slog.String("err", screenErr.Error()))
 					}
-					if errored {
-						return errors.Join(fmt.Errorf("failed to run step %s", v.step.GetId()), err)
-					}
 				}
 			}
-			return nil
-		}),
-	}
+
+			if s.EventQueue != nil {
+				s.EventQueue <- &ChangeStepEvent{
+					Step:  v,
+					Idx:   i,
+					Total: n,
+				}
+			}
+
+			err := runAction(c, v.Action, 10*time.Second)
+			errored := err != nil
+			if errored {
+				logger.Error("Failed to run step.", slog.String("id", v.step.GetId()), slog.String("err", err.Error()))
+			}
+
+			if errored || s.ScreenShotAfter {
+				fp, screenErr := c.Screenshot(c.Context, v.step.GetId())
+				if screenErr != nil {
+					logger.Error("Failed to take screenshot.", slog.String("id", v.step.GetId()), slog.String("err", screenErr.Error()))
+				}
+				if errored {
+					return errors.Join(fmt.Errorf("failed to run step %s, see what happened here: %s", v.step.GetId(), fp), err)
+				}
+			}
+		}
+		return nil
+	}))
 
 	go func() {
 		var err error
@@ -151,7 +166,7 @@ func Run(ctx context.Context, s *Script, str renderer.Stream, o ...opts.Opt[RunO
 	return ctx, nil
 }
 
-func runAction(c *headless.Context, act action.Action, to time.Duration) error {
+func runAction(c *engine.Context, act action.Action, to time.Duration) error {
 	if _, ok := act.(*action.PromptAction); ok {
 		return act.Act(c)
 	}
@@ -201,7 +216,7 @@ func New(s *v1beta1.Script) (*Script, error) {
 
 func NewStep(s *v1beta1.Step) *Step {
 	return &Step{
-		Action: action.New(s.GetId(), s.GetAction()),
+		Action: action.New(fmt.Sprintf("step.%s", s.GetId()), s.GetAction()),
 		step:   s,
 	}
 }
@@ -241,7 +256,8 @@ type Script struct {
 	Steps            []*Step
 	ScreenShotBefore bool
 	ScreenShotAfter  bool
-	SavePage         bool
+	ScreenshotsDir   string
+	EventQueue       EventQueue
 
 	script *v1beta1.Script
 }

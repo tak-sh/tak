@@ -1,0 +1,13 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.TerminatingCondition.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "if": {
+      "description": "If the condition is met, the script is completed. This condition is checked\n after every Step.",
+      "type": "string"
+    }
+  },
+  "title": "Terminating Condition",
+  "type": "object"
+}

@@ -11,10 +11,6 @@
     "id": {
       "description": "A top-level referential key for the Step. If not provided, the result is not\n stored nor is it accessible by following Steps. If it is provided, any following\n Step can refer to the value returned by the Action.",
       "type": "string"
-    },
-    "if": {
-      "description": "Execute the Step if a truthy value is returned.",
-      "type": "string"
     }
   },
   "title": "Step",

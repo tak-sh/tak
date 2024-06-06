@@ -3,7 +3,7 @@ package action
 import (
 	"fmt"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
-	"github.com/tak-sh/tak/pkg/headless"
+	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/validate"
 )
 
@@ -12,7 +12,7 @@ type Action interface {
 	validate.Validator
 
 	// Act performs the browser action. Typically, leverages chromedp.Action.
-	Act(ctx *headless.Context) error
+	Act(ctx *engine.Context) error
 
 	// GetID a unique ID for the Action. Used for things like calling Context.RenderTemplate.
 	GetID() string
@@ -31,4 +31,15 @@ func New(id string, a *v1beta1.Action) Action {
 	return &NoOpAction{
 		ID: id,
 	}
+}
+
+func AsDOMReader(a Action) (engine.DOMDataWriter, bool) {
+	if prmpt, ok := a.(*PromptAction); ok {
+		v, ok := prmpt.Prompt.Component.(engine.DOMDataWriter)
+		return v, ok
+	} else if v, ok := a.(engine.DOMDataWriter); ok {
+		return v, ok
+	}
+
+	return nil, false
 }

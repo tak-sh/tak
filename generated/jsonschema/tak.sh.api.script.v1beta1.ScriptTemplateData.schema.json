@@ -1,0 +1,30 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.ScriptTemplateData.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "browser": {
+      "$ref": "tak.sh.api.script.v1beta1.BrowserTemplateData.schema.json"
+    },
+    "element": {
+      "$ref": "tak.sh.api.script.v1beta1.HTMLNodeTemplateData.schema.json",
+      "description": "If a particular element from the page is being targeted, this will be available\n as a template variable."
+    },
+    "option": {
+      "$ref": "tak.sh.api.script.v1beta1.Component.Dropdown.Option.schema.json",
+      "description": "If within the context of a Dropdown component, e.g. when evaluating the if condition,\n this field will be made available."
+    },
+    "step": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "A step ID mapped to the resulting value.",
+      "propertyNames": {
+        "type": "string"
+      },
+      "type": "object"
+    }
+  },
+  "title": "Script Template Data",
+  "type": "object"
+}

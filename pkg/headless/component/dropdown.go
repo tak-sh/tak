@@ -10,9 +10,10 @@ import (
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/except"
-	"github.com/tak-sh/tak/pkg/headless"
-	"github.com/tak-sh/tak/pkg/internal/ptr"
+	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/renderer"
+	"github.com/tak-sh/tak/pkg/utils/ptr"
+	"golang.org/x/net/html"
 	"google.golang.org/protobuf/proto"
 	"io"
 	"log/slog"
@@ -21,64 +22,75 @@ import (
 
 func NewDropdown(d *v1beta1.Component_Dropdown) *Dropdown {
 	out := &Dropdown{
-		comp: d,
+		Component_Dropdown: d,
+		Query:              engine.NewEachSelector(d.GetFrom().GetSelector()),
 	}
 
 	return out
 }
 
 var _ Component = &Dropdown{}
+var _ engine.DOMDataWriter = &Dropdown{}
 
 type Dropdown struct {
-	comp *v1beta1.Component_Dropdown
+	*v1beta1.Component_Dropdown
+	Query engine.DOMQuery
+}
+
+func (d *Dropdown) GetQueries() []engine.DOMQuery {
+	return []engine.DOMQuery{d.Query}
 }
 
 func (d *Dropdown) ToProto() *v1beta1.Component {
-	return &v1beta1.Component{Dropdown: d.comp}
+	return &v1beta1.Component{Dropdown: d.Component_Dropdown}
 }
 
-func (d *Dropdown) Render(ctx *headless.Context, props *Props) renderer.Model {
-	cl := proto.Clone(d.comp).(*v1beta1.Component_Dropdown)
+func (d *Dropdown) Render(ctx *engine.Context, props *Props) renderer.Model {
+	cl := proto.Clone(d.Component_Dropdown).(*v1beta1.Component_Dropdown)
 	logger := contexts.GetLogger(ctx)
 
 	for _, v := range cl.GetOptions() {
-		v.Value = ctx.Store.Render(v.Value)
+		v.Value = ctx.TemplateData.Render(v.Value)
 	}
 
-	if d.comp.From != nil {
-		listSelector := ctx.Store.Render(d.comp.From.GetSelector())
-		v := ctx.Store.Get(PageKey)
-		if v != nil {
-			raw := v.(string)
+	if d.GetFrom().GetSelector() != nil {
+		from := proto.Clone(d.GetFrom()).(*v1beta1.Component_Dropdown_FromSpec)
+		from.Selector.ListSelector = ctx.TemplateData.Render(d.From.Selector.ListSelector)
+		raw := ctx.TemplateData.GetBrowser().GetContent()
+		if raw != "" {
 			doc, err := goquery.NewDocumentFromReader(strings.NewReader(raw))
 			if err != nil {
-				logger.Error("Failed to render dropdown from field dur to bad HTML doc.",
+				logger.Error("Failed to render dropdown from field due to bad HTML doc.",
 					slog.String("err", err.Error()),
-					slog.String("field", d.comp.From.Selector),
+					slog.String("field", d.From.Selector.ListSelector),
 					slog.String("doc", raw),
 				)
 				return newDropdownModel(cl, props)
 			}
 
-			sel := doc.Find(listSelector)
-			sel.Each(func(i int, selection *goquery.Selection) {
-				sel = selection.Find(d.comp.From.Iterator)
-				if sel == nil {
-					return
-				}
-				text := sel.Text()
+			eles := engine.NewEachSelector(from.GetSelector()).Query(doc.Selection)
+			for _, sel := range eles {
+				st := addDocToStore(ctx.TemplateData, sel)
 
-				cl.Options = append(cl.Options, &v1beta1.Component_Dropdown_Option{Value: text})
-			})
+				opt := proto.Clone(from.Mapper).(*v1beta1.Component_Dropdown_Option)
+
+				opt.Value = st.Render(opt.Value)
+				opt.Text = ptr.PtrOrNil(st.Render(opt.GetText()))
+
+				cl.Options = append(cl.Options, opt)
+			}
 		}
-
 	}
 
 	for _, mer := range cl.GetMerge() {
 		for _, opt := range cl.GetOptions() {
-			store := ctx.Store.Merge(headless.Store{"option": headless.JSONVal(opt)})
+			store := ctx.TemplateData.Merge(&engine.TemplateData{
+				ScriptTemplateData: &v1beta1.ScriptTemplateData{
+					Option: opt,
+				},
+			})
 			ifVal := store.Render(mer.GetIf())
-			if headless.IsTruthy(ifVal) {
+			if engine.IsTruthy(ifVal) {
 				proto.Merge(opt, mer.GetOption())
 			}
 		}
@@ -88,15 +100,15 @@ func (d *Dropdown) Render(ctx *headless.Context, props *Props) renderer.Model {
 }
 
 func (d *Dropdown) Validate() error {
-	if len(d.comp.GetOptions()) == 0 && d.comp.From == nil {
+	if len(d.GetOptions()) == 0 && d.From == nil {
 		return except.NewInvalid("at least one option or a from field is required")
-	} else if d.comp.From != nil {
-		if d.comp.From.Selector == "" || d.comp.From.Iterator == "" {
-			return except.NewInvalid("both the list_selector and iterator fields are required")
+	} else if d.From != nil {
+		if d.From.Selector.ListSelector == "" || d.From.Selector.Iterator == "" || d.From.Selector == nil {
+			return except.NewInvalid("both the extract and mapper fields are required")
 		}
 	}
 
-	for _, v := range d.comp.GetOptions() {
+	for _, v := range d.GetOptions() {
 		err := validateDropdownComponentOption(v)
 		if err != nil {
 			return err
@@ -104,6 +116,42 @@ func (d *Dropdown) Validate() error {
 	}
 
 	return nil
+}
+
+func addDocToStore(st *engine.TemplateData, sel *goquery.Selection) *engine.TemplateData {
+	if sel == nil {
+		return st
+	}
+
+	if len(sel.Nodes) == 0 {
+		return st
+	}
+
+	return st.Merge(&engine.TemplateData{
+		ScriptTemplateData: &v1beta1.ScriptTemplateData{
+			Element: nodeToTemplate(sel.Nodes[0]),
+		},
+	})
+}
+
+func nodeToTemplate(node *html.Node) *v1beta1.HTMLNodeTemplateData {
+	out := &v1beta1.HTMLNodeTemplateData{
+		Attrs:   make(map[string]*v1beta1.HTMLNodeTemplateData_Attribute),
+		Element: node.DataAtom.String(),
+	}
+
+	if node.FirstChild != nil {
+		out.Data = node.FirstChild.Data
+	}
+
+	for _, v := range node.Attr {
+		out.Attrs[v.Key] = &v1beta1.HTMLNodeTemplateData_Attribute{
+			Val:       v.Val,
+			Namespace: v.Namespace,
+		}
+	}
+
+	return out
 }
 
 func validateDropdownComponentOption(_ *v1beta1.Component_Dropdown_Option) error {
@@ -163,26 +211,27 @@ func (d *DropdownModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			t(d.Props.ID, &v1beta1.Value{Str: ptr.Ptr(v.comp.Value)})
 		}
 	case tea.KeyMsg:
-		idx := d.List.Index()
-		if !d.Comp.Options[idx].GetDisabled() {
-			break
-		}
-		halt := idx == len(d.Comp.Options)-1 || idx == 0
-		up := key.Matches(t, list.DefaultKeyMap().CursorUp)
-		var direc func()
-		if halt {
-			if up {
-				direc = d.List.CursorDown
-			} else {
-				direc = d.List.CursorUp
+		if key.Matches(t, list.DefaultKeyMap().CursorUp, list.DefaultKeyMap().CursorDown) {
+			idx := d.List.Index()
+			if !d.Comp.Options[idx].GetDisabled() {
+				break
 			}
-		} else if up {
-			direc = d.List.CursorUp
-		} else {
-			direc = d.List.CursorDown
+			halt := idx == len(d.Comp.Options)-1 || idx == 0
+			up := key.Matches(t, list.DefaultKeyMap().CursorUp)
+			var direc func()
+			if halt {
+				if up {
+					direc = d.List.CursorDown
+				} else {
+					direc = d.List.CursorUp
+				}
+			} else if up {
+				direc = d.List.CursorUp
+			} else {
+				direc = d.List.CursorDown
+			}
+			direc()
 		}
-
-		direc()
 	}
 
 	return d, cmd
@@ -203,13 +252,6 @@ func (d *dropdownItemDelegate) Render(w io.Writer, m list.Model, index int, item
 		return
 	}
 
-	var str string
-	if i.comp.GetDisabled() {
-		str = i.comp.Value
-	} else {
-		str = fmt.Sprintf("%d. %s", i.displayIdx, i.comp.Value)
-	}
-
 	fn := DropdownItemStyle.Render
 	if index == m.Index() {
 		fn = func(s ...string) string {
@@ -217,7 +259,7 @@ func (d *dropdownItemDelegate) Render(w io.Writer, m list.Model, index int, item
 		}
 	}
 
-	_, _ = fmt.Fprint(w, fn(str))
+	_, _ = fmt.Fprint(w, fn(i.getText()))
 }
 
 func (d *dropdownItemDelegate) Height() int {
@@ -238,6 +280,24 @@ type dropdownItem struct {
 	idx        int
 	displayIdx int
 	comp       *v1beta1.Component_Dropdown_Option
+}
+
+func (d *dropdownItem) getText() string {
+	var str string
+	if d.comp.GetDisabled() {
+		if d.comp.Text != nil {
+			str = *d.comp.Text
+		} else {
+			str = d.comp.Value
+		}
+	} else {
+		text := d.comp.Value
+		if d.comp.Text != nil {
+			text = *d.comp.Text
+		}
+		str = fmt.Sprintf("%d. %s", d.displayIdx, text)
+	}
+	return str
 }
 
 func (d *dropdownItem) FilterValue() string {

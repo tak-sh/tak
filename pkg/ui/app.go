@@ -6,8 +6,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/headless/component"
-	"github.com/tak-sh/tak/pkg/internal/bubbleutils"
 	"github.com/tak-sh/tak/pkg/ui/keyregistry"
+	"github.com/tak-sh/tak/pkg/utils/bubbleutils"
 )
 
 var _ tea.Model = &App{}

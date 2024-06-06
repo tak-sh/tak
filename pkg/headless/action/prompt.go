@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/except"
-	"github.com/tak-sh/tak/pkg/headless"
 	"github.com/tak-sh/tak/pkg/headless/component"
-	"github.com/tak-sh/tak/pkg/internal/grpcutils"
+	"github.com/tak-sh/tak/pkg/headless/engine"
+	"github.com/tak-sh/tak/pkg/utils/grpcutils"
 	"github.com/tak-sh/tak/pkg/validate"
 )
 
@@ -45,7 +45,7 @@ func (p *PromptAction) String() string {
 	return fmt.Sprintf("asking the user %s", prmpt)
 }
 
-func (p *PromptAction) Act(ctx *headless.Context) error {
+func (p *PromptAction) Act(ctx *engine.Context) error {
 	model := p.Prompt.Component.Render(ctx, &component.Props{
 		ID:          p.GetID(),
 		Title:       component.TitleStyle.Render(p.prompt.GetPrompt().GetTitle()),
@@ -60,7 +60,7 @@ func (p *PromptAction) Act(ctx *headless.Context) error {
 		return err
 	}
 
-	ctx.Store.Set(p.ID, GetValue(v.Value))
+	ctx.TemplateData.Step[p.ID] = GetValueString(v.Value)
 
 	return nil
 }

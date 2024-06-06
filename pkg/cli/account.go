@@ -107,9 +107,12 @@ func NewAccountSyncCommand() *cli.Command {
 			}
 
 			s.ScreenShotAfter = cmd.Bool("debug")
+			s.ScreenshotsDir = ss
 
 			str := renderer.NewStream()
 			eq := script.NewEventQueue()
+
+			s.EventQueue = eq
 
 			bubble := ui.NewBubbleUI(acct, str, eq)
 
@@ -119,7 +122,7 @@ func NewAccountSyncCommand() *cli.Command {
 				return errors.Join(except.NewInternal("failed to start the UI"), err)
 			}
 
-			scriptCtx, err := script.Run(cmd.Context, s, str, script.WithScreenshotsDir(ss), script.WithEventQueue(eq))
+			scriptCtx, err := script.Run(cmd.Context, s, str)
 			if err != nil {
 				return err
 			}

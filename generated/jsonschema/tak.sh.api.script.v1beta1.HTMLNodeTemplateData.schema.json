@@ -1,0 +1,27 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.HTMLNodeTemplateData.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "attrs": {
+      "additionalProperties": {
+        "$ref": "tak.sh.api.script.v1beta1.HTMLNodeTemplateData.Attribute.schema.json"
+      },
+      "description": "The attributes on the HTML node.",
+      "propertyNames": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "data": {
+      "description": "The stringified child of the element.",
+      "type": "string"
+    },
+    "element": {
+      "description": "The element type e.g. span",
+      "type": "string"
+    }
+  },
+  "title": "HTML Node Template Data",
+  "type": "object"
+}

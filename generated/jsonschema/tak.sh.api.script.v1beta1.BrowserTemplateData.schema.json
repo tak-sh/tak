@@ -1,0 +1,17 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.BrowserTemplateData.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "content": {
+      "description": "The raw HTML of the page.",
+      "type": "string"
+    },
+    "url": {
+      "description": "The current URL for the browser.",
+      "type": "string"
+    }
+  },
+  "title": "Browser Template Data",
+  "type": "object"
+}

@@ -11,6 +11,10 @@
       "description": "If true, the option is not shown.",
       "type": "boolean"
     },
+    "text": {
+      "description": "If provided, the option shows the given text. If not, the value\n field is shown.",
+      "type": "string"
+    },
     "value": {
       "description": "A hardcoded value for the option. Accepts a variable reference.",
       "type": "string"

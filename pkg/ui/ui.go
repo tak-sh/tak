@@ -8,8 +8,8 @@ import (
 	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/headless/action"
 	"github.com/tak-sh/tak/pkg/headless/script"
-	"github.com/tak-sh/tak/pkg/internal/stringutils"
 	"github.com/tak-sh/tak/pkg/renderer"
+	"github.com/tak-sh/tak/pkg/utils/stringutils"
 	"io"
 	"log/slog"
 )

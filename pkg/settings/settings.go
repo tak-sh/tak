@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"github.com/tak-sh/tak/pkg/utils/fileutils"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"log/slog"
@@ -74,6 +75,7 @@ type Settings interface {
 	CacheDir() string
 	SettingsDir() string
 	ScreenshotDir() string
+	HTMLDir(accountName string) string
 	LogFile() string
 	IsDev() bool
 	AccountDir(account string) string
@@ -85,6 +87,18 @@ type settings struct {
 	SetDir  string
 	Cache   string
 	Log     string
+}
+
+func (s *settings) HTMLDir(accountName string) string {
+	basePath := fileutils.FindUpwardFrom("accounts", "", "")
+	if basePath == "" {
+		basePath, _ = os.Getwd()
+	}
+
+	fp := filepath.Join(basePath, accountName, "html")
+	_ = os.MkdirAll(fp, os.ModePerm)
+
+	return fp
 }
 
 func (s *settings) AccountDataDir(account string) string {

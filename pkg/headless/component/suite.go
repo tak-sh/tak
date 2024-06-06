@@ -8,9 +8,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/suite"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
-	"github.com/tak-sh/tak/pkg/headless"
-	"github.com/tak-sh/tak/pkg/internal/bubbleutils"
-	"github.com/tak-sh/tak/pkg/internal/testutils"
+	"github.com/tak-sh/tak/pkg/headless/engine"
+	"github.com/tak-sh/tak/pkg/utils/bubbleutils"
+	"github.com/tak-sh/tak/pkg/utils/testutils"
 	"io"
 	"strings"
 	"sync/atomic"
@@ -20,10 +20,10 @@ type TestSuite struct {
 	suite.Suite
 }
 
-func (s *TestSuite) NewApp(store headless.Store, props *Props, components ...Component) *Commander {
+func (s *TestSuite) NewApp(store *engine.TemplateData, props *Props, components ...Component) *Commander {
 	models := make([]tea.Model, 0, len(components))
-	c, _ := headless.NewContext(context.Background(), nil, headless.ContextOpts{})
-	c.Store = c.Store.Merge(store)
+	c, _ := engine.NewContext(context.Background(), nil, engine.ContextOpts{})
+	c.TemplateData = c.TemplateData.Merge(store)
 
 	for _, v := range components {
 		models = append(models, v.Render(c, props))
@@ -54,7 +54,7 @@ func (s *TestSuite) NewApp(store headless.Store, props *Props, components ...Com
 	return commander
 }
 
-func (s *TestSuite) EqualDropdownItems(expected []*dropdownItem, actual []list.Item) bool {
+func (s *TestSuite) EqualDropdownItems(expected []*dropdownItem, actual []list.Item, args ...any) bool {
 	act := make([]*dropdownItem, len(actual))
 	for i, v := range actual {
 		act[i] = v.(*dropdownItem)
@@ -69,7 +69,7 @@ func (s *TestSuite) EqualDropdownItems(expected []*dropdownItem, actual []list.I
 		actComp[i] = v.comp
 	}
 
-	return testutils.AllEmpty(&s.Suite, testutils.EqualProtos(expComp, actComp))
+	return testutils.AllEmpty(&s.Suite, testutils.EqualProtos(expComp, actComp), args...)
 }
 
 type Output interface {

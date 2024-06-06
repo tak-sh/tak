@@ -1,0 +1,15 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Component.Dropdown.FromSpec.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "mapper": {
+      "$ref": "tak.sh.api.script.v1beta1.Component.Dropdown.Option.schema.json"
+    },
+    "selector": {
+      "$ref": "tak.sh.api.script.v1beta1.EachSelector.schema.json"
+    }
+  },
+  "title": "From Spec",
+  "type": "object"
+}

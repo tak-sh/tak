@@ -5,14 +5,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
-	"github.com/tak-sh/tak/pkg/headless"
-	"github.com/tak-sh/tak/pkg/internal/ptr"
+	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/renderer"
+	"github.com/tak-sh/tak/pkg/utils/ptr"
 )
 
 func NewInput(i *v1beta1.Component_Input) *Input {
 	out := &Input{
-		comp: i,
+		Component_Input: i,
 	}
 
 	return out
@@ -21,10 +21,10 @@ func NewInput(i *v1beta1.Component_Input) *Input {
 var _ Component = &Input{}
 
 type Input struct {
-	comp *v1beta1.Component_Input
+	*v1beta1.Component_Input
 }
 
-func (i *Input) Render(_ *headless.Context, props *Props) renderer.Model {
+func (i *Input) Render(_ *engine.Context, props *Props) renderer.Model {
 	ti := textinput.New()
 	ti.Focus()
 	ti.CharLimit = 156
@@ -33,12 +33,12 @@ func (i *Input) Render(_ *headless.Context, props *Props) renderer.Model {
 	return &InputModel{
 		Props: props,
 		Text:  ti,
-		Comp:  i.comp,
+		Comp:  i.Component_Input,
 	}
 }
 
 func (i *Input) ToProto() *v1beta1.Component {
-	return &v1beta1.Component{Input: i.comp}
+	return &v1beta1.Component{Input: i.Component_Input}
 }
 
 func (i *Input) Validate() error {

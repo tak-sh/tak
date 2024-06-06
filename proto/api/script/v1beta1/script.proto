@@ -7,6 +7,13 @@ option go_package = "github.com/tak-sh/tak/generated/go/api/script/v1beta1";
 // A way to programmatically control what the headless browser should do.
 message Script {
   repeated Step steps = 1;
+  TerminatingCondition is_done = 2 [json_name = "is_done"];
+}
+
+message TerminatingCondition {
+  // If the condition is met, the script is completed. This condition is checked
+  // after every Step.
+  string if = 1;
 }
 
 // A single line within a Script.
@@ -18,9 +25,6 @@ message Step {
 
   // Provide the action that should be taken for this Step.
   Action action = 2;
-
-  // Execute the Step if a truthy value is returned.
-  optional string if = 3;
 }
 
 message Action {
@@ -55,6 +59,15 @@ message Action {
     Prompt prompt = 1;
   }
 
+  // A group of actions to execute.
+  message Branch {
+    // If the field is truthy, this Branch will be taken.
+    string if = 1;
+
+    // The steps that are executed as part of this Branch
+    repeated Step steps = 2;
+  }
+
   // Click on an element.
   optional MouseClick mouse_click = 1 [json_name = "mouse_click"];
 
@@ -65,6 +78,8 @@ message Action {
   optional PromptUser ask = 3;
 
   optional Nav nav = 4;
+
+  optional Branch branch = 5;
 }
 
 message Prompt {
@@ -92,6 +107,10 @@ message Component {
 
       // If true, the option is not selectable.
       optional bool disabled = 3;
+
+      // If provided, the option shows the given text. If not, the value
+      // field is shown.
+      optional string text = 4;
     }
 
     message OptionMerge {
@@ -102,12 +121,17 @@ message Component {
       Option option = 2;
     }
 
+    message FromSpec {
+      EachSelector selector = 1;
+      Option mapper = 2;
+    }
+
     repeated Option options = 1;
 
     // A variable reference that populates the options. If the options field is also set, this
     // is appended to it. Useful if you want to dynamically create a dropdown from an arbitrary
     // list of options on the page.
-    optional EachExtractor from = 2;
+    optional FromSpec from = 2;
 
     // If specified, merge the specified fields into every option for the Dropdown.
     repeated OptionMerge merge = 3;
@@ -133,13 +157,49 @@ message Value {
   repeated string str_list = 2 [json_name = "str_list"];
 }
 
-// Grabs specific fields for each element of a matching query. This functions like the each function
+// Selects specific fields for each element of a matching query. This functions like the each function
 // in jQuery: https://api.jquery.com/jquery.each/.
-message EachExtractor {
+message EachSelector {
   // A selector string that matches the list of elements.
-  string selector = 1;
+  string list_selector = 1 [json_name = "list_selector"];
 
   // A selector string that is called on every element returned from Selector that aims to
   // extract the desired value from the element.
   string iterator = 2;
+}
+
+message HTMLNodeTemplateData {
+  message Attribute {
+    string val = 1;
+    string namespace = 2;
+  }
+
+  // The stringified child of the element.
+  string data = 1;
+
+  // The attributes on the HTML node.
+  map<string, Attribute> attrs = 2;
+
+  // The element type e.g. span
+  string element = 3;
+}
+
+message BrowserTemplateData {
+  // The current URL for the browser.
+  string url = 1;
+  // The raw HTML of the page.
+  string content = 2;
+}
+
+message ScriptTemplateData {
+  // A step ID mapped to the resulting value.
+  map<string, string> step = 1;
+  BrowserTemplateData browser = 2;
+  // If a particular element from the page is being targeted, this will be available
+  // as a template variable.
+  HTMLNodeTemplateData element = 3;
+
+  // If within the context of a Dropdown component, e.g. when evaluating the if condition,
+  // this field will be made available.
+  Component.Dropdown.Option option = 4;
 }
