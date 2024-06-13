@@ -1,6 +1,7 @@
-package action
+package step
 
 import (
+	"errors"
 	"fmt"
 	"github.com/chromedp/chromedp"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
@@ -9,23 +10,36 @@ import (
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
 )
 
-func NewMouseClick(id string, d *v1beta1.Action_MouseClick) *MouseClick {
+func NewMouseClick(id string, d *v1beta1.Action_MouseClick) (*MouseClick, error) {
 	out := &MouseClick{
 		Action_MouseClick: d,
 		ID:                id,
 		Query:             engine.StringSelector(d.Selector),
 	}
 
-	return out
+	var err error
+	out.SelectorTemp, err = engine.CompileTemplate(d.Selector)
+	if err != nil {
+		return nil, errors.Join(except.NewInvalid("invalid template selector %s", d.Selector), err)
+	}
+
+	return out, nil
 }
 
 var _ Action = &MouseClick{}
 var _ grpcutils.ProtoWrapper[*v1beta1.Action_MouseClick] = &MouseClick{}
+var _ PathNode = &MouseClick{}
 
 type MouseClick struct {
 	*v1beta1.Action_MouseClick
-	ID    string
-	Query engine.DOMQuery
+	ID           string
+	Query        engine.DOMQuery
+	SelectorTemp *engine.TemplateRenderer
+}
+
+func (m *MouseClick) IsReady(st *engine.TemplateData) bool {
+	sel := m.SelectorTemp.Render(st)
+	return len(st.CurrentPage.Find(sel).Nodes) == 0
 }
 
 func (m *MouseClick) Validate() error {
@@ -44,7 +58,7 @@ func (m *MouseClick) String() string {
 }
 
 func (m *MouseClick) Act(c *engine.Context) error {
-	sel := c.TemplateData.Render(m.GetSelector())
+	sel := m.SelectorTemp.Render(c.TemplateData)
 	if m.GetDouble() {
 		return chromedp.DoubleClick(sel).Do(c)
 	} else {

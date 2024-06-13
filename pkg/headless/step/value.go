@@ -1,4 +1,4 @@
-package action
+package step
 
 import (
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"

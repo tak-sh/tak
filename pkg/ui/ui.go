@@ -6,8 +6,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tak-sh/tak/generated/go/api/account/v1beta1"
 	"github.com/tak-sh/tak/pkg/contexts"
-	"github.com/tak-sh/tak/pkg/headless/action"
-	"github.com/tak-sh/tak/pkg/headless/script"
+	"github.com/tak-sh/tak/pkg/headless/engine"
+	"github.com/tak-sh/tak/pkg/headless/step"
 	"github.com/tak-sh/tak/pkg/renderer"
 	"github.com/tak-sh/tak/pkg/utils/stringutils"
 	"io"
@@ -18,7 +18,7 @@ type UI interface {
 	Start(ctx context.Context, r io.Reader, w io.Writer) (context.Context, error)
 }
 
-func NewBubbleUI(account *v1beta1.Account, str renderer.Stream, eq script.EventQueue) UI {
+func NewBubbleUI(account *v1beta1.Account, str renderer.Stream, eq engine.EventQueue) UI {
 	return &ui{
 		Account:      account,
 		Stream:       str,
@@ -29,7 +29,7 @@ func NewBubbleUI(account *v1beta1.Account, str renderer.Stream, eq script.EventQ
 type ui struct {
 	Account      *v1beta1.Account
 	Stream       renderer.Stream
-	ScriptEvents script.EventQueue
+	ScriptEvents engine.EventQueue
 }
 
 func (u *ui) Start(ctx context.Context, r io.Reader, w io.Writer) (context.Context, error) {
@@ -85,9 +85,12 @@ func (u *ui) Start(ctx context.Context, r io.Reader, w io.Writer) (context.Conte
 				}
 
 				switch t := e.(type) {
-				case *script.ChangeStepEvent:
-					if _, ok := t.Step.Action.(*action.PromptAction); !ok {
-						p.Send(UpdateProgressMsg{Msg: stringutils.Capitalize(t.Step.Action.String())})
+				case *engine.NextInstructionEvent:
+					switch in := t.Instruction.(type) {
+					case *step.Step:
+						if _, ok := in.CompiledAction.(*step.PromptAction); !ok {
+							p.Send(UpdateProgressMsg{Msg: stringutils.Capitalize(in.CompiledAction.String())})
+						}
 					}
 				}
 			}

@@ -62,7 +62,7 @@ func (d *DropdownTestSuite) TestRender() {
 	}
 
 	for desc, v := range tests {
-		dd := NewDropdown(v.Given)
+		dd, _ := NewDropdown(v.Given)
 
 		expectedItems := make([]*dropdownItem, 0, len(v.ExpectedOptions))
 		for i := range v.ExpectedOptions {
@@ -70,7 +70,7 @@ func (d *DropdownTestSuite) TestRender() {
 			expectedItems = append(expectedItems, &dropdownItem{comp: v})
 		}
 
-		c, _ := engine.NewContext(context.Background(), nil, engine.ContextOpts{})
+		c, _ := engine.NewContext(context.Background(), nil, engine.NewEvaluator(engine.NewEventQueue()), engine.ContextOpts{})
 		c.TemplateData.Browser.Content = v.GivenHTML
 		mod := dd.Render(c, &Props{})
 		actual := mod.(*DropdownModel)

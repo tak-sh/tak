@@ -11,6 +11,13 @@
     "id": {
       "description": "A top-level referential key for the Step. If not provided, the result is not\n stored nor is it accessible by following Steps. If it is provided, any following\n Step can refer to the value returned by the Action.",
       "type": "string"
+    },
+    "signals": {
+      "description": "Optional list of signals that can be triggered based on what is being shown\n on the page or the overall state of the step.",
+      "items": {
+        "$ref": "tak.sh.api.script.v1beta1.ConditionalSignal.schema.json"
+      },
+      "type": "array"
     }
   },
   "title": "Step",

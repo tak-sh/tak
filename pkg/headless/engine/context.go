@@ -1,14 +1,17 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/chromedp/chromedp"
 	"github.com/flosch/pongo2/v6"
 	"github.com/goccy/go-json"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/renderer"
+	"golang.org/x/net/html"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -20,6 +23,7 @@ type Context struct {
 	context.Context
 	TemplateData *TemplateData
 	Stream       renderer.Stream
+	Evaluator    Evaluator
 
 	screenshotBuffer []byte
 	opt              ContextOpts
@@ -31,21 +35,33 @@ type ContextOpts struct {
 	HTMLDir string
 }
 
-func NewContext(parent context.Context, str renderer.Stream, o ContextOpts) (*Context, error) {
+func NewContext(parent context.Context, str renderer.Stream, eval Evaluator, o ContextOpts) (*Context, error) {
 	out := &Context{
 		Context: parent,
 		TemplateData: &TemplateData{
+			CurrentPage: goquery.NewDocumentFromNode(nil),
 			ScriptTemplateData: &v1beta1.ScriptTemplateData{
 				Step:    make(map[string]string),
 				Browser: &v1beta1.BrowserTemplateData{},
 			},
 		},
+		Evaluator:        eval,
 		Stream:           str,
 		opt:              o,
 		screenshotBuffer: make([]byte, 10000),
 	}
 
 	return out, nil
+}
+
+func (c *Context) RefreshPageState() error {
+	err := chromedp.OuterHTML("html", &c.TemplateData.Browser.Content).Do(c.Context)
+	if err != nil {
+		return err
+	}
+
+	c.TemplateData.CurrentPage, _ = goquery.NewDocumentFromReader(strings.NewReader(c.TemplateData.Browser.Content))
+	return nil
 }
 
 func (c *Context) SaveHTML(_ context.Context, fp, content string) error {
@@ -82,30 +98,95 @@ func (c *Context) Screenshot(ctx context.Context, name string) (string, error) {
 	return fp, nil
 }
 
-type TemplateData struct {
-	*v1beta1.ScriptTemplateData
+func init() {
+	_ = pongo2.RegisterFilter("html_select", func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+		query := param.String()
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(in.String()))
+		if err != nil {
+			return pongo2.AsValue(""), nil
+		}
+
+		s := doc.Find(query)
+
+		var buf bytes.Buffer
+		if len(s.Nodes) > 0 {
+			for c := s.Nodes[0]; c != nil; c = c.NextSibling {
+				err = html.Render(&buf, c)
+				if err != nil {
+					return pongo2.AsValue(""), nil
+				}
+			}
+		}
+
+		return pongo2.AsSafeValue(buf.String()), nil
+	})
 }
 
-func (t *TemplateData) Render(v string) string {
-	tmp, err := pongo2.FromString(v)
+func CompileTemplate(expr string) (*TemplateRenderer, error) {
+	tmp, err := pongo2.FromString(expr)
 	if err != nil {
+		return nil, err
+	}
+	return &TemplateRenderer{template: tmp}, nil
+}
+
+type TemplateRenderer struct {
+	template *pongo2.Template
+}
+
+func (t *TemplateRenderer) Render(d *TemplateData) string {
+	if t == nil {
+		return ""
+	}
+	data := d.Merge()
+
+	steps := data.Step
+	data.Step = nil
+	val := JSONVal(data)
+	stepVal := pongo2.Context{}
+	val["step"] = stepVal
+	for k, v := range steps {
+		addField(strings.Split(k, "."), v, stepVal)
+	}
+
+	v, _ := t.template.Execute(val)
+
+	return v
+}
+
+type TemplateData struct {
+	*v1beta1.ScriptTemplateData
+	CurrentPage *goquery.Document
+}
+
+func (t *TemplateData) GetStepVal(id string) string {
+	if t.GetStep() == nil {
 		return ""
 	}
 
-	out, err := tmp.Execute(JSONVal(t.ScriptTemplateData))
-	if err != nil {
-		return ""
+	return t.Step[id]
+}
+
+func (t *TemplateData) SetStepVal(id, val string) {
+	if t.GetStep() == nil {
+		t.Step = map[string]string{}
 	}
-	return out
+	t.Step[id] = val
 }
 
 func (t *TemplateData) Merge(m ...*TemplateData) *TemplateData {
 	out := proto.Clone(t.ScriptTemplateData).(*v1beta1.ScriptTemplateData)
 	for _, v := range m {
+		if v == nil {
+			continue
+		}
 		proto.Merge(out, v.ScriptTemplateData)
 	}
 
-	return &TemplateData{out}
+	return &TemplateData{
+		ScriptTemplateData: out,
+		CurrentPage:        goquery.NewDocumentFromNode(nil),
+	}
 }
 
 var (
@@ -178,4 +259,28 @@ func IsTruthy(a any) bool {
 		return t != 0
 	}
 	return false
+}
+
+func addField(p []string, val string, c pongo2.Context) {
+	switch len(p) {
+	case 0:
+		return
+	case 1:
+		c[p[0]] = val
+		return
+	default:
+	}
+
+	field := p[0]
+
+	var temp pongo2.Context
+	q, ok := c[field]
+	if !ok {
+		temp = pongo2.Context{}
+		c[field] = temp
+	} else {
+		temp = q.(pongo2.Context)
+	}
+
+	addField(p[1:], val, temp)
 }

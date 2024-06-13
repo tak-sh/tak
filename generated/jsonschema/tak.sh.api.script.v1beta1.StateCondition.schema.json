@@ -1,0 +1,35 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.StateCondition.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A conditional that sets the state of the Script.",
+  "properties": {
+    "if": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "state": {
+      "anyOf": [
+        {
+          "enum": [
+            "unknown",
+            "success",
+            "error"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        {
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "type": "integer"
+        }
+      ],
+      "description": "The state that will be triggered if the condition is met."
+    }
+  },
+  "title": "State Condition",
+  "type": "object"
+}

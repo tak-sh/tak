@@ -3,8 +3,10 @@ metadata:
   version: v1beta1
 spec:
   login_script:
-    is_done:
-      if: "{{ 'web/auth/dashboard#/dashboard/overview' in browser.url }}"
+    signals:
+      - if: "{{ 'web/auth/dashboard#/dashboard/overview' in browser.url }}"
+        message: Login successful
+        signal: success
     steps:
       - action:
           nav:
@@ -26,9 +28,6 @@ spec:
                 input:
                   type: PASSWORD
       - action:
-          mouse_click:
-            selector: "input[id*='input-rememberMe']"
-      - action:
           input:
             selector: "#userId-text-input-field"
             value: "{{ step.username }}"
@@ -39,14 +38,57 @@ spec:
       - action:
           mouse_click:
             selector: "#signin-button"
-      - action:
-          mouse_click:
-            selector: "#header-simplerAuth-dropdownoptions-styledselect"
-      - action:
+      - id: mfa-select
+        action:
           branch:
-            if: "{{ 'We don't recognize this device' in browser.content }}"
+            if: |
+              {{"Let's make sure it's you" in browser.content}}
             steps:
-              - id: mfa
+              - id: selected
+                action:
+                  ask:
+                    prompt:
+                      title: Select MFA method
+                      component:
+                        dropdown:
+                          from:
+                            selector:
+                              list_selector: "ul[id='mds-list__list-items']"
+                              iterator: "span[id*='list-item__input-label-optionsList-1']"
+                            mapper:
+                              value: "{{ element.attrs.id.val }}"
+                              text: "{{ element.data }}"
+              - action:
+                  mouse_click:
+                    selector: "span[id='{{ step.mfa-select.selected }}']"
+              - action:
+                  mouse_click:
+                    selector: "button[class='button button--primary']"
+              - id: otp
+                action:
+                  ask:
+                    prompt:
+                      title: Enter your OTP code
+                      component:
+                        input:
+                          type: PASSWORD
+              - action:
+                  input:
+                    selector: "input[id='otpInput-input']"
+                    value: "{{ step.mfa-select.otp }}"
+              - action:
+                  mouse_click:
+                    selector: "button[class='button button--primary']"
+      - id: mfa
+        action:
+          branch:
+            if: |
+              {{ "We don't recognize this device" in browser.content }}
+            steps:
+              - action:
+                  mouse_click:
+                    selector: "#header-simplerAuth-dropdownoptions-styledselect"
+              - id: 2fa
                 action:
                   ask:
                     prompt:
@@ -69,7 +111,7 @@ spec:
                               text: "{{ element.data }}"
               - action:
                   mouse_click:
-                    selector: "a > span[id='{{ step.mfa }}']"
+                    selector: "a > span[id='{{ step.mfa.2fa }}']"
               - action:
                   mouse_click:
                     selector: "button[id*='requestIdentificationCode-sm']"
@@ -85,7 +127,7 @@ spec:
               - action:
                   input:
                     selector: "input[id*='otpcode_input-input-field']"
-                    value: "{{ step.otp }}"
+                    value: "{{ step.mfa.otp }}"
               - action:
                   input:
                     selector: "input[id*='password_input-input-field']"

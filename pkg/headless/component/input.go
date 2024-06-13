@@ -10,12 +10,12 @@ import (
 	"github.com/tak-sh/tak/pkg/utils/ptr"
 )
 
-func NewInput(i *v1beta1.Component_Input) *Input {
+func NewInput(i *v1beta1.Component_Input) (*Input, error) {
 	out := &Input{
 		Component_Input: i,
 	}
 
-	return out
+	return out, nil
 }
 
 var _ Component = &Input{}

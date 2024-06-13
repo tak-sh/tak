@@ -12,9 +12,8 @@ import (
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/except"
-	"github.com/tak-sh/tak/pkg/headless/action"
 	"github.com/tak-sh/tak/pkg/headless/engine"
-	"github.com/tak-sh/tak/pkg/renderer"
+	"github.com/tak-sh/tak/pkg/headless/step"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
 	"github.com/tak-sh/tak/pkg/utils/ptr"
 	"github.com/tak-sh/tak/pkg/validate"
@@ -32,13 +31,22 @@ var desktop = device.Info{
 }
 
 type RunOpts struct {
-	StartingStep int
 	Store        *engine.TemplateData
 	PreRun       []chromedp.Action
+	StartingStep int
+	Headless     bool
 }
 
 func (r RunOpts) DefaultOptions() RunOpts {
-	return RunOpts{}
+	return RunOpts{
+		Headless: true,
+	}
+}
+
+func WithHeadless(b bool) opts.Opt[RunOpts] {
+	return func(r *RunOpts) {
+		r.Headless = b
+	}
 }
 
 func WithPreRunActions(act ...chromedp.Action) opts.Opt[RunOpts] {
@@ -59,27 +67,21 @@ func WithStore(st *engine.TemplateData) opts.Opt[RunOpts] {
 	}
 }
 
-func Run(ctx context.Context, s *Script, str renderer.Stream, o ...opts.Opt[RunOpts]) (context.Context, error) {
-	ctx, cancel := context.WithCancelCause(ctx)
+func Run(c *engine.Context, s *Script, o ...opts.Opt[RunOpts]) (context.Context, error) {
+	ctx, cancel := context.WithCancelCause(c.Context)
 
 	op := opts.DefaultApply(o...)
 	logger := contexts.GetLogger(ctx)
-	c, err := engine.NewContext(ctx, str, engine.ContextOpts{
-		ScreenshotDir: s.ScreenshotsDir,
-	})
 	c.TemplateData = c.TemplateData.Merge(op.Store)
 
 	chromeOpts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", false),
 		chromedp.UserDataDir("./data"),
+		chromedp.Flag("headless", op.Headless),
 	)
-	execCtx, execCancel := chromedp.NewExecAllocator(ctx, chromeOpts...)
+	execCtx, _ := chromedp.NewExecAllocator(ctx, chromeOpts...)
 
-	chromeCtx, chromeCancel := chromedp.NewContext(execCtx)
-	if err != nil {
-		return nil, err
-	}
+	chromeCtx, _ := chromedp.NewContext(execCtx)
 
 	acts := []chromedp.Action{
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -93,59 +95,44 @@ func Run(ctx context.Context, s *Script, str renderer.Stream, o ...opts.Opt[RunO
 	acts = append(acts, chromedp.ActionFunc(func(ctx context.Context) error {
 		c.Context = ctx
 		n := len(s.Steps)
-
-		toRedact := make([]engine.DOMDataWriter, 0, len(s.Steps))
-
 		for i := op.StartingStep; i < n; i++ {
 			v := s.Steps[i]
 			logger.Info("Running action.", slog.String("action", v.Action.String()))
 
-			sel, ok := action.AsDOMReader(v.Action)
-			if ok {
-				toRedact = append(toRedact, sel)
-			}
-
 			if i > 0 {
-				err := chromedp.OuterHTML("html", &c.TemplateData.Browser.Content).Do(ctx)
+				err := c.RefreshPageState()
 				if err != nil {
 					logger.Error("Failed to load page.", slog.String("err", err.Error()))
 				}
 
-				var u string
-				err = chromedp.Location(&u).Do(ctx)
+				err = chromedp.Location(&c.TemplateData.Browser.Url).Do(ctx)
 				if err != nil {
 					logger.Error("Failed to get browser URL.")
 				}
 
 				if s.ScreenShotBefore {
-					_, screenErr := c.Screenshot(c.Context, v.step.GetId())
+					_, screenErr := c.Screenshot(c.Context, v.GetId())
 					if screenErr != nil {
-						logger.Error("Failed to take screenshot.", slog.String("id", v.step.GetId()), slog.String("err", screenErr.Error()))
+						logger.Error("Failed to take screenshot.", slog.String("id", v.GetId()), slog.String("err", screenErr.Error()))
 					}
 				}
 			}
 
-			if s.EventQueue != nil {
-				s.EventQueue <- &ChangeStepEvent{
-					Step:  v,
-					Idx:   i,
-					Total: n,
-				}
-			}
-
-			err := runAction(c, v.Action, 10*time.Second)
+			success, err := evalStep(c, s, logger, i)
 			errored := err != nil
 			if errored {
-				logger.Error("Failed to run step.", slog.String("id", v.step.GetId()), slog.String("err", err.Error()))
+				logger.Error("Failed to run step.", slog.String("id", v.GetId()), slog.String("err", err.Error()))
+			} else if !success {
+				logger.Error("Failed to run step.")
 			}
 
 			if errored || s.ScreenShotAfter {
-				fp, screenErr := c.Screenshot(c.Context, v.step.GetId())
+				fp, screenErr := c.Screenshot(c.Context, v.GetId())
 				if screenErr != nil {
-					logger.Error("Failed to take screenshot.", slog.String("id", v.step.GetId()), slog.String("err", screenErr.Error()))
+					logger.Error("Failed to take screenshot.", slog.String("id", v.GetId()), slog.String("err", screenErr.Error()))
 				}
 				if errored {
-					return errors.Join(fmt.Errorf("failed to run step %s, see what happened here: %s", v.step.GetId(), fp), err)
+					return errors.Join(fmt.Errorf("failed to run step %s, see what happened here: %s", v.GetId(), fp), err)
 				}
 			}
 		}
@@ -155,9 +142,11 @@ func Run(ctx context.Context, s *Script, str renderer.Stream, o ...opts.Opt[RunO
 	go func() {
 		var err error
 		defer func() {
+			canErr := chromedp.Cancel(chromeCtx)
+			if canErr != nil {
+				logger.Error("Failed to clean up context.", slog.String("err", err.Error()))
+			}
 			cancel(err)
-			chromeCancel()
-			execCancel()
 		}()
 		err = chromedp.Run(chromeCtx, acts...)
 		return
@@ -166,47 +155,47 @@ func Run(ctx context.Context, s *Script, str renderer.Stream, o ...opts.Opt[RunO
 	return ctx, nil
 }
 
-func runAction(c *engine.Context, act action.Action, to time.Duration) error {
-	if _, ok := act.(*action.PromptAction); ok {
-		return act.Act(c)
-	}
-	var toCancel context.CancelFunc
-	oldCtx := c.Context
-	c.Context, toCancel = context.WithTimeout(c.Context, to)
-	defer func() {
-		toCancel()
-		c.Context = oldCtx
-	}()
-	err := act.Act(c)
-	if errors.Is(err, context.DeadlineExceeded) {
-		return except.NewTimeout("took too long")
-	}
-	return err
-}
-
 func New(s *v1beta1.Script) (*Script, error) {
 	if len(s.Steps) == 0 {
 		return nil, except.NewInvalid("at least 1 step required")
 	}
 
 	out := &Script{
-		Steps:  make([]*Step, 0, len(s.Steps)),
+		Steps:  make([]*step.Step, 0, len(s.Steps)),
 		script: s,
 	}
 
+	var err error
+	condSigs := make([]*step.ConditionalSignal, len(s.Signals))
+	for i, v := range s.GetSignals() {
+		condSigs[i], err = step.NewConditionalSignal(v)
+		if err != nil {
+			return nil, errors.Join(except.NewInvalid("script signal #%d", i), err)
+		}
+	}
+
+	out.Decider = step.NewDecider(condSigs)
+
 	for i := range s.GetSteps() {
 		v := s.Steps[i]
+
+		if v.GetAction().GetBranch() != nil && v.GetId() == "" {
+			return nil, errors.Join(except.NewInvalid("step #%d has a branch action but no id", i), err)
+		}
 
 		if v.Id == nil {
 			v.Id = ptr.Ptr(strconv.Itoa(i))
 		}
 
-		st := NewStep(v)
+		st, err := step.NewStep(v)
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("step #%d", i), err)
+		}
 
 		out.Steps = append(out.Steps, st)
 	}
 
-	err := out.Validate()
+	err = out.Validate()
 	if err != nil {
 		return nil, err
 	}
@@ -214,50 +203,14 @@ func New(s *v1beta1.Script) (*Script, error) {
 	return out, nil
 }
 
-func NewStep(s *v1beta1.Step) *Step {
-	return &Step{
-		Action: action.New(fmt.Sprintf("step.%s", s.GetId()), s.GetAction()),
-		step:   s,
-	}
-}
-
-var _ grpcutils.ProtoWrapper[*v1beta1.Step] = &Step{}
-var _ validate.Validator = &Step{}
-
-type Step struct {
-	Action action.Action
-	step   *v1beta1.Step
-}
-
-func (s *Step) Validate() error {
-	if s.step.GetAction().GetAsk() != nil && s.step.Id == nil {
-		return except.NewInvalid("any step with a prompt must have an ID")
-	}
-
-	err := s.Action.Validate()
-	if err != nil {
-		if s.step.Id != nil {
-			return errors.Join(fmt.Errorf("id %s", s.step.GetId()), err)
-		}
-		return err
-	}
-
-	return nil
-}
-
-func (s *Step) ToProto() *v1beta1.Step {
-	return s.step
-}
-
 var _ grpcutils.ProtoWrapper[*v1beta1.Script] = &Script{}
 var _ validate.Validator = &Script{}
 
 type Script struct {
-	Steps            []*Step
+	Steps            []*step.Step
 	ScreenShotBefore bool
 	ScreenShotAfter  bool
-	ScreenshotsDir   string
-	EventQueue       EventQueue
+	Decider          step.Decider
 
 	script *v1beta1.Script
 }
@@ -265,8 +218,8 @@ type Script struct {
 func (c *Script) Validate() error {
 	ids := map[string]int{}
 	for i, v := range c.Steps {
-		if v.step.Id != nil {
-			id := *v.step.Id
+		if v.Id != nil {
+			id := *v.Id
 			num, ok := ids[id]
 			if ok {
 				return except.NewInvalid("step #%d and #%d have the same id", num, i)
@@ -287,4 +240,54 @@ func (c *Script) Validate() error {
 
 func (c *Script) ToProto() *v1beta1.Script {
 	return c.script
+}
+
+func gatherPaths(steps []*step.Step) []step.PathNode {
+	out := make([]step.PathNode, 0, 1)
+	n := len(steps)
+	if n == 0 {
+		return out
+	}
+
+	out = append(out, steps[0])
+
+	// if the step contains a branching action, we should include the next non-branch step in case
+	// the branch is not true.
+	if _, ok := steps[0].CompiledAction.(*step.BranchAction); ok && n > 1 {
+		for i := 1; i < len(steps); i++ {
+			v := steps[i]
+			out = append(out, v)
+			if _, isBranch := v.CompiledAction.(*step.BranchAction); !isBranch {
+				break
+			}
+		}
+	}
+
+	return out
+}
+
+func evalStep(c *engine.Context, s *Script, logger *slog.Logger, i int) (bool, error) {
+	v := s.Steps[i]
+
+	decided, stop, err := s.Decider.ChoosePath(c, time.Second*10, gatherPaths(s.Steps[i:])...)
+	if err != nil {
+		logger.Error("Failed to choose a path.", slog.String("err", err.Error()))
+		return false, err
+	}
+
+	if stop {
+		return false, nil
+	}
+
+	switch decided.(type) {
+	case *step.Step:
+		err = c.Evaluator.Eval(c, v)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	default:
+		logger.Error("Unknown path", slog.Any("path", decided), slog.String("step", v.GetId()))
+		return false, except.NewInternal("unsure on how to continue")
+	}
 }

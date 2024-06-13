@@ -2,6 +2,7 @@ package component
 
 import (
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
+	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/renderer"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
@@ -20,14 +21,14 @@ type Component interface {
 	Render(c *engine.Context, p *Props) renderer.Model
 }
 
-func New(c *v1beta1.Component) Component {
+func New(c *v1beta1.Component) (Component, error) {
 	if i := c.GetInput(); i != nil {
 		return NewInput(i)
 	} else if i := c.GetDropdown(); i != nil {
 		return NewDropdown(i)
-	} else {
-		return &NoOp{}
 	}
+
+	return nil, except.NewInvalid("blank components not allowed")
 }
 
 // SyncStateMsg is sent when the program has detected the user has finished populating a field.

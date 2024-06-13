@@ -6,6 +6,7 @@ import (
 	"github.com/tak-sh/tak/pkg/account"
 	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/except"
+	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/headless/script"
 	"github.com/tak-sh/tak/pkg/renderer"
 	"github.com/tak-sh/tak/pkg/settings"
@@ -90,6 +91,10 @@ func NewAccountSyncCommand() *cli.Command {
 					return nil
 				},
 			},
+			&cli.BoolFlag{
+				Name:  "mfa",
+				Usage: "Enables support for MFA by running chrome's GUI.",
+			},
 		},
 		Action: func(cmd *cli.Context) error {
 			ss := cmd.String("screenshots")
@@ -107,12 +112,9 @@ func NewAccountSyncCommand() *cli.Command {
 			}
 
 			s.ScreenShotAfter = cmd.Bool("debug")
-			s.ScreenshotsDir = ss
 
 			str := renderer.NewStream()
-			eq := script.NewEventQueue()
-
-			s.EventQueue = eq
+			eq := engine.NewEventQueue()
 
 			bubble := ui.NewBubbleUI(acct, str, eq)
 
@@ -122,7 +124,14 @@ func NewAccountSyncCommand() *cli.Command {
 				return errors.Join(except.NewInternal("failed to start the UI"), err)
 			}
 
-			scriptCtx, err := script.Run(cmd.Context, s, str)
+			c, err := engine.NewContext(cmd.Context, str, engine.NewEvaluator(eq), engine.ContextOpts{
+				ScreenshotDir: ss,
+			})
+			if err != nil {
+				return err
+			}
+
+			scriptCtx, err := script.Run(c, s, script.WithHeadless(!cmd.Bool("mfa")))
 			if err != nil {
 				return err
 			}

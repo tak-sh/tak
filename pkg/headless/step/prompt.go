@@ -1,4 +1,4 @@
-package action
+package step
 
 import (
 	"fmt"
@@ -19,13 +19,19 @@ type PromptAction struct {
 	ID     string
 }
 
-func NewPromptAction(id string, p *v1beta1.Action_PromptUser) *PromptAction {
+func NewPromptAction(id string, p *v1beta1.Action_PromptUser) (*PromptAction, error) {
 	out := &PromptAction{
-		Prompt: NewPrompt(p.GetPrompt()),
 		ID:     id,
 		prompt: p,
 	}
-	return out
+
+	var err error
+	out.Prompt, err = NewPrompt(p.GetPrompt())
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 func (p *PromptAction) Validate() error {
@@ -60,7 +66,7 @@ func (p *PromptAction) Act(ctx *engine.Context) error {
 		return err
 	}
 
-	ctx.TemplateData.Step[p.ID] = GetValueString(v.Value)
+	ctx.TemplateData.SetStepVal(p.ID, GetValueString(v.Value))
 
 	return nil
 }
@@ -73,13 +79,18 @@ func (p *PromptAction) ToProto() *v1beta1.Action_PromptUser {
 	return p.prompt
 }
 
-func NewPrompt(p *v1beta1.Prompt) *Prompt {
-	out := &Prompt{
-		prompt:    p,
-		Component: component.New(p.GetComponent()),
+func NewPrompt(p *v1beta1.Prompt) (*Prompt, error) {
+	cmp, err := component.New(p.GetComponent())
+	if err != nil {
+		return nil, err
 	}
 
-	return out
+	out := &Prompt{
+		prompt:    p,
+		Component: cmp,
+	}
+
+	return out, nil
 }
 
 var _ grpcutils.ProtoWrapper[*v1beta1.Prompt] = &Prompt{}

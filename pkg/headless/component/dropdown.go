@@ -1,6 +1,7 @@
 package component
 
 import (
+	"errors"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/charmbracelet/bubbles/key"
@@ -20,13 +21,57 @@ import (
 	"strings"
 )
 
-func NewDropdown(d *v1beta1.Component_Dropdown) *Dropdown {
+func NewDropdown(d *v1beta1.Component_Dropdown) (*Dropdown, error) {
 	out := &Dropdown{
 		Component_Dropdown: d,
 		Query:              engine.NewEachSelector(d.GetFrom().GetSelector()),
+		OptionValueTemps:   make([]*engine.TemplateRenderer, 0, len(d.Options)),
+		OptionMergeIfTemps: make([]*engine.TemplateRenderer, 0, len(d.Merge)),
 	}
 
-	return out
+	for i, v := range d.GetOptions() {
+		op, err := engine.CompileTemplate(v.Value)
+		if err != nil {
+			return nil, errors.Join(except.NewInvalid("%s is an invalid template for option #%d", v.Value, i), err)
+		}
+		out.OptionValueTemps = append(out.OptionValueTemps, op)
+	}
+
+	var err error
+	if val := d.GetFrom().GetMapper().GetValue(); val != "" {
+		out.MapperOptionValueTemp, err = engine.CompileTemplate(val)
+		if err != nil {
+			return nil, errors.Join(except.NewInvalid("%s is an invalid template for mapper value field", val), err)
+		}
+	}
+
+	if val := d.GetFrom().GetMapper().GetText(); val != "" {
+		out.MapperOptionTextTemp, err = engine.CompileTemplate(val)
+		if err != nil {
+			return nil, errors.Join(except.NewInvalid("%s is an invalid template for mapper text field", val), err)
+		}
+	}
+
+	for i, mer := range d.GetMerge() {
+		ifStr := "true"
+		if mer.If != nil {
+			ifStr = *mer.If
+		}
+		op, err := engine.CompileTemplate(ifStr)
+		if err != nil {
+			return nil, errors.Join(except.NewInvalid("%s is an invalid template for the if field in merged option #%d", ifStr, i), err)
+		}
+		out.OptionMergeIfTemps = append(out.OptionMergeIfTemps, op)
+	}
+
+	if d.GetFrom().GetSelector() != nil {
+		out.FromListSelectorTemp, err = engine.CompileTemplate(d.GetFrom().GetSelector().GetListSelector())
+		if err != nil {
+			return nil, errors.Join(except.NewInvalid("%s is an invalid template for the list_selector field", d.From.Selector.ListSelector), err)
+		}
+	}
+
+	return out, nil
 }
 
 var _ Component = &Dropdown{}
@@ -35,6 +80,12 @@ var _ engine.DOMDataWriter = &Dropdown{}
 type Dropdown struct {
 	*v1beta1.Component_Dropdown
 	Query engine.DOMQuery
+
+	OptionValueTemps      []*engine.TemplateRenderer
+	MapperOptionValueTemp *engine.TemplateRenderer
+	MapperOptionTextTemp  *engine.TemplateRenderer
+	OptionMergeIfTemps    []*engine.TemplateRenderer
+	FromListSelectorTemp  *engine.TemplateRenderer
 }
 
 func (d *Dropdown) GetQueries() []engine.DOMQuery {
@@ -49,13 +100,13 @@ func (d *Dropdown) Render(ctx *engine.Context, props *Props) renderer.Model {
 	cl := proto.Clone(d.Component_Dropdown).(*v1beta1.Component_Dropdown)
 	logger := contexts.GetLogger(ctx)
 
-	for _, v := range cl.GetOptions() {
-		v.Value = ctx.TemplateData.Render(v.Value)
+	for i, v := range cl.GetOptions() {
+		v.Value = d.OptionValueTemps[i].Render(ctx.TemplateData)
 	}
 
 	if d.GetFrom().GetSelector() != nil {
 		from := proto.Clone(d.GetFrom()).(*v1beta1.Component_Dropdown_FromSpec)
-		from.Selector.ListSelector = ctx.TemplateData.Render(d.From.Selector.ListSelector)
+		from.Selector.ListSelector = d.FromListSelectorTemp.Render(ctx.TemplateData)
 		raw := ctx.TemplateData.GetBrowser().GetContent()
 		if raw != "" {
 			doc, err := goquery.NewDocumentFromReader(strings.NewReader(raw))
@@ -74,23 +125,22 @@ func (d *Dropdown) Render(ctx *engine.Context, props *Props) renderer.Model {
 
 				opt := proto.Clone(from.Mapper).(*v1beta1.Component_Dropdown_Option)
 
-				opt.Value = st.Render(opt.Value)
-				opt.Text = ptr.PtrOrNil(st.Render(opt.GetText()))
+				opt.Value = d.MapperOptionValueTemp.Render(st)
+				opt.Text = ptr.PtrOrNil(d.MapperOptionTextTemp.Render(st))
 
 				cl.Options = append(cl.Options, opt)
 			}
 		}
 	}
 
-	for _, mer := range cl.GetMerge() {
+	for i, mer := range cl.GetMerge() {
 		for _, opt := range cl.GetOptions() {
-			store := ctx.TemplateData.Merge(&engine.TemplateData{
+			tempData := ctx.TemplateData.Merge(&engine.TemplateData{
 				ScriptTemplateData: &v1beta1.ScriptTemplateData{
 					Option: opt,
 				},
 			})
-			ifVal := store.Render(mer.GetIf())
-			if engine.IsTruthy(ifVal) {
+			if engine.IsTruthy(d.OptionMergeIfTemps[i].Render(tempData)) {
 				proto.Merge(opt, mer.GetOption())
 			}
 		}

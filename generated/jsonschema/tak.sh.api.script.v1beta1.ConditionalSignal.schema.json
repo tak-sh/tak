@@ -1,0 +1,37 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.ConditionalSignal.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Signals that something has happened based on if a condition returns a truthy\n value.",
+  "properties": {
+    "if": {
+      "description": "If a truthy value is set, the Signal is sent.",
+      "type": "string"
+    },
+    "message": {
+      "description": "An optional message providing more context as to why the signal occurred.",
+      "type": "string"
+    },
+    "signal": {
+      "anyOf": [
+        {
+          "enum": [
+            "unknown",
+            "success",
+            "error"
+          ],
+          "title": "Signal",
+          "type": "string"
+        },
+        {
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "type": "integer"
+        }
+      ],
+      "description": "The signal that will be sent if the condition is met."
+    }
+  },
+  "title": "Conditional Signal",
+  "type": "object"
+}

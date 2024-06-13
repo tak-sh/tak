@@ -7,13 +7,7 @@ option go_package = "github.com/tak-sh/tak/generated/go/api/script/v1beta1";
 // A way to programmatically control what the headless browser should do.
 message Script {
   repeated Step steps = 1;
-  TerminatingCondition is_done = 2 [json_name = "is_done"];
-}
-
-message TerminatingCondition {
-  // If the condition is met, the script is completed. This condition is checked
-  // after every Step.
-  string if = 1;
+  repeated ConditionalSignal signals = 2;
 }
 
 // A single line within a Script.
@@ -25,6 +19,10 @@ message Step {
 
   // Provide the action that should be taken for this Step.
   Action action = 2;
+
+  // Optional list of signals that can be triggered based on what is being shown
+  // on the page or the overall state of the step.
+  repeated ConditionalSignal signals = 3;
 }
 
 message Action {
@@ -202,4 +200,26 @@ message ScriptTemplateData {
   // If within the context of a Dropdown component, e.g. when evaluating the if condition,
   // this field will be made available.
   Component.Dropdown.Option option = 4;
+}
+
+// Signals that something has happened based on if a condition returns a truthy
+// value.
+message ConditionalSignal {
+  enum Signal {
+    unknown = 0;
+    // A terminating signal that the operation is complete. If this signal is sent for
+    // a step, the Step will not run and effectively skips it. If it's sent for the
+    // Script, then the Script exits and is considered complete.
+    success = 1;
+    // A terminating signal that an error has occurred.
+    error = 2;
+  }
+
+  // If a truthy value is set, the Signal is sent.
+  string if = 1;
+
+  // The signal that will be sent if the condition is met.
+  Signal signal = 2;
+  // An optional message providing more context as to why the signal occurred.
+  optional string message = 3;
 }

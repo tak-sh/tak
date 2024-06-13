@@ -1,6 +1,7 @@
-package action
+package step
 
 import (
+	"errors"
 	"fmt"
 	"github.com/chromedp/chromedp"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
@@ -9,28 +10,33 @@ import (
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
 )
 
-func NewInput(id string, d *v1beta1.Action_Input) *Input {
+func NewInput(id string, d *v1beta1.Action_Input) (*Input, error) {
 	out := &Input{
 		Action_Input: d,
 		ID:           id,
-		Query:        engine.StringSelector(d.Selector),
 	}
 
-	return out
+	var err error
+	out.ValueTemp, err = engine.CompileTemplate(d.Value)
+	if err != nil {
+		return nil, errors.Join(except.NewInvalid("invalid template value %s", d.Value), err)
+	}
+
+	return out, nil
 }
 
 var _ Action = &Input{}
 var _ grpcutils.ProtoWrapper[*v1beta1.Action_Input] = &Input{}
-var _ engine.DOMDataWriter = &Input{}
+var _ PathNode = &Input{}
 
 type Input struct {
 	ID string
 	*v1beta1.Action_Input
-	Query engine.DOMQuery
+	ValueTemp *engine.TemplateRenderer
 }
 
-func (i *Input) GetQueries() []engine.DOMQuery {
-	return []engine.DOMQuery{i.Query}
+func (i *Input) IsReady(st *engine.TemplateData) bool {
+	return len(st.CurrentPage.Find(i.GetSelector()).Nodes) == 0
 }
 
 func (i *Input) Validate() error {
@@ -45,7 +51,7 @@ func (i *Input) String() string {
 }
 
 func (i *Input) Act(c *engine.Context) error {
-	val := c.TemplateData.Render(i.GetValue())
+	val := i.ValueTemp.Render(c.TemplateData)
 	return chromedp.SendKeys(i.GetSelector(), val).Do(c)
 }
 
