@@ -17,6 +17,7 @@ type Stream interface {
 
 type Model interface {
 	tea.Model
+	GetId() string
 }
 
 type Response struct {

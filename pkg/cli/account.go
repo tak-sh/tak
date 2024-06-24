@@ -3,17 +3,20 @@ package cli
 import (
 	"context"
 	"errors"
+	"github.com/chromedp/chromedp"
 	"github.com/tak-sh/tak/pkg/account"
 	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/headless/script"
+	"github.com/tak-sh/tak/pkg/headless/step/stepper"
 	"github.com/tak-sh/tak/pkg/renderer"
 	"github.com/tak-sh/tak/pkg/settings"
 	"github.com/tak-sh/tak/pkg/ui"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
+	"time"
 )
 
 func NewAccountCommand() *cli.Command {
@@ -124,14 +127,19 @@ func NewAccountSyncCommand() *cli.Command {
 				return errors.Join(except.NewInternal("failed to start the UI"), err)
 			}
 
-			c, err := engine.NewContext(cmd.Context, str, engine.NewEvaluator(eq), engine.ContextOpts{
+			c, err := engine.NewContext(cmd.Context, str, engine.NewEvaluator(eq, 10*time.Second), engine.ContextOpts{
 				ScreenshotDir: ss,
 			})
 			if err != nil {
 				return err
 			}
 
-			scriptCtx, err := script.Run(c, s, script.WithHeadless(!cmd.Bool("mfa")))
+			st, err := stepper.New(s.Signals, s.Steps)
+			if err != nil {
+				return err
+			}
+
+			scriptCtx, err := script.Run(c, s, st, script.WithChromeOpts(chromedp.Flag("headless", !cmd.Bool("mfa"))))
 			if err != nil {
 				return err
 			}

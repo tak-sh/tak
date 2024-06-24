@@ -53,6 +53,10 @@ type InputModel struct {
 	Comp  *v1beta1.Component_Input
 }
 
+func (i *InputModel) GetId() string {
+	return i.Props.ID
+}
+
 func (i *InputModel) Init() tea.Cmd {
 	return textinput.Blink
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/utils/ptr"
 	"testing"
+	"time"
 )
 
 type DropdownTestSuite struct {
@@ -70,7 +71,7 @@ func (d *DropdownTestSuite) TestRender() {
 			expectedItems = append(expectedItems, &dropdownItem{comp: v})
 		}
 
-		c, _ := engine.NewContext(context.Background(), nil, engine.NewEvaluator(engine.NewEventQueue()), engine.ContextOpts{})
+		c, _ := engine.NewContext(context.Background(), nil, engine.NewEvaluator(engine.NewEventQueue(), 1*time.Second), engine.ContextOpts{})
 		c.TemplateData.Browser.Content = v.GivenHTML
 		mod := dd.Render(c, &Props{})
 		actual := mod.(*DropdownModel)

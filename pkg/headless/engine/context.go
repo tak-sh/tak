@@ -24,9 +24,15 @@ type Context struct {
 	TemplateData *TemplateData
 	Stream       renderer.Stream
 	Evaluator    Evaluator
+	Browser      Browser
 
 	screenshotBuffer []byte
 	opt              ContextOpts
+}
+
+type Browser interface {
+	RefreshPage(ctx context.Context, content *string) error
+	URL(ctx context.Context) (string, error)
 }
 
 type ContextOpts struct {
@@ -47,6 +53,7 @@ func NewContext(parent context.Context, str renderer.Stream, eval Evaluator, o C
 		},
 		Evaluator:        eval,
 		Stream:           str,
+		Browser:          NewBrowser(),
 		opt:              o,
 		screenshotBuffer: make([]byte, 10000),
 	}
@@ -55,7 +62,12 @@ func NewContext(parent context.Context, str renderer.Stream, eval Evaluator, o C
 }
 
 func (c *Context) RefreshPageState() error {
-	err := chromedp.OuterHTML("html", &c.TemplateData.Browser.Content).Do(c.Context)
+	err := c.Browser.RefreshPage(c.Context, &c.TemplateData.Browser.Content)
+	if err != nil {
+		return err
+	}
+
+	c.TemplateData.Browser.Url, err = c.Browser.URL(c.Context)
 	if err != nil {
 		return err
 	}
@@ -283,4 +295,21 @@ func addField(p []string, val string, c pongo2.Context) {
 	}
 
 	addField(p[1:], val, temp)
+}
+
+func NewBrowser() Browser {
+	return &browser{}
+}
+
+type browser struct {
+}
+
+func (p *browser) URL(ctx context.Context) (s string, err error) {
+	err = chromedp.Location(&s).Do(ctx)
+	return
+}
+
+func (p *browser) RefreshPage(ctx context.Context, content *string) error {
+	err := chromedp.OuterHTML("html", content).Do(ctx)
+	return err
 }

@@ -27,7 +27,7 @@ func NewInput(id string, d *v1beta1.Action_Input) (*Input, error) {
 
 var _ Action = &Input{}
 var _ grpcutils.ProtoWrapper[*v1beta1.Action_Input] = &Input{}
-var _ PathNode = &Input{}
+var _ engine.PathNode = &Input{}
 
 type Input struct {
 	ID string
@@ -35,8 +35,12 @@ type Input struct {
 	ValueTemp *engine.TemplateRenderer
 }
 
+func (i *Input) GetId() string {
+	return i.ID
+}
+
 func (i *Input) IsReady(st *engine.TemplateData) bool {
-	return len(st.CurrentPage.Find(i.GetSelector()).Nodes) == 0
+	return len(st.CurrentPage.Find(i.GetSelector()).Nodes) > 0
 }
 
 func (i *Input) Validate() error {

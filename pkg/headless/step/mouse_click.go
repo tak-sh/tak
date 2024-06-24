@@ -28,7 +28,7 @@ func NewMouseClick(id string, d *v1beta1.Action_MouseClick) (*MouseClick, error)
 
 var _ Action = &MouseClick{}
 var _ grpcutils.ProtoWrapper[*v1beta1.Action_MouseClick] = &MouseClick{}
-var _ PathNode = &MouseClick{}
+var _ engine.PathNode = &MouseClick{}
 
 type MouseClick struct {
 	*v1beta1.Action_MouseClick
@@ -37,9 +37,13 @@ type MouseClick struct {
 	SelectorTemp *engine.TemplateRenderer
 }
 
+func (m *MouseClick) GetId() string {
+	return m.ID
+}
+
 func (m *MouseClick) IsReady(st *engine.TemplateData) bool {
 	sel := m.SelectorTemp.Render(st)
-	return len(st.CurrentPage.Find(sel).Nodes) == 0
+	return len(st.CurrentPage.Find(sel).Nodes) > 0
 }
 
 func (m *MouseClick) Validate() error {

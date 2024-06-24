@@ -45,7 +45,7 @@ func NewID(parent string, idx int, s *v1beta1.Step) (string, error) {
 	if s.Id != nil {
 		id := *s.Id
 		if !idRegex.MatchString(id) {
-			return "", except.NewInvalid("%s is not a valid id. IDs must contain alphanumeric, '_', '-' characters")
+			return "", except.NewInvalid("%s is not a valid id. IDs must contain alphanumeric, '_', '-' characters", id)
 		}
 		newId = append(newId, id)
 	} else {
@@ -57,8 +57,7 @@ func NewID(parent string, idx int, s *v1beta1.Step) (string, error) {
 var _ grpcutils.ProtoWrapper[*v1beta1.Step] = &Step{}
 var _ validate.Validator = &Step{}
 var _ engine.Instruction = &Step{}
-var _ PathNode = &Step{}
-var _ Signaller = &Step{}
+var _ engine.PathNode = &Step{}
 
 type Step struct {
 	*v1beta1.Step
@@ -66,19 +65,8 @@ type Step struct {
 	ConditionalSignals []*ConditionalSignal
 }
 
-func (s *Step) CheckSignal(st *engine.TemplateData) *v1beta1.ConditionalSignal {
-	for _, v := range s.ConditionalSignals {
-		sig := v.CheckSignal(st)
-		if sig.GetSignal() != v1beta1.ConditionalSignal_unknown {
-			return sig
-		}
-	}
-
-	return nil
-}
-
 func (s *Step) IsReady(st *engine.TemplateData) bool {
-	v, ok := s.CompiledAction.(PathNode)
+	v, ok := s.CompiledAction.(engine.PathNode)
 	if ok {
 		return v.IsReady(st)
 	}
@@ -86,8 +74,8 @@ func (s *Step) IsReady(st *engine.TemplateData) bool {
 	return true
 }
 
-func (s *Step) Eval(c *engine.Context) error {
-	return RunAction(c, s.CompiledAction, 10*time.Second)
+func (s *Step) Eval(c *engine.Context, to time.Duration) error {
+	return RunAction(c, s.CompiledAction, to)
 }
 
 func (s *Step) Validate() error {

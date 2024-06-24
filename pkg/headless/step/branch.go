@@ -43,15 +43,32 @@ func NewBranch(id string, b *v1beta1.Action_Branch) (*BranchAction, error) {
 	return out, nil
 }
 
+type Branches interface {
+	Statements() []engine.Instruction
+}
+
 var _ Action = &BranchAction{}
 var _ grpcutils.ProtoWrapper[*v1beta1.Action_Branch] = &BranchAction{}
-var _ PathNode = &BranchAction{}
+var _ engine.PathNode = &BranchAction{}
+var _ Branches = &BranchAction{}
 
 type BranchAction struct {
 	*v1beta1.Action_Branch
 	ID            string
 	CompiledSteps []*Step
 	ShouldRunCond *engine.TemplateRenderer
+}
+
+func (b *BranchAction) Statements() []engine.Instruction {
+	return nil
+}
+
+func (b *BranchAction) GetId() string {
+	return b.ID
+}
+
+func (b *BranchAction) ShouldBranch(c *engine.Context) bool {
+	return engine.IsTruthy(b.ShouldRunCond.Render(c.TemplateData))
 }
 
 func (b *BranchAction) IsReady(st *engine.TemplateData) bool {

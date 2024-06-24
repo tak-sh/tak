@@ -14,6 +14,7 @@ import (
 	"io"
 	"strings"
 	"sync/atomic"
+	"time"
 )
 
 type TestSuite struct {
@@ -22,7 +23,7 @@ type TestSuite struct {
 
 func (s *TestSuite) NewApp(store *engine.TemplateData, props *Props, components ...Component) *Commander {
 	models := make([]tea.Model, 0, len(components))
-	c, _ := engine.NewContext(context.Background(), nil, engine.NewEvaluator(engine.NewEventQueue()), engine.ContextOpts{})
+	c, _ := engine.NewContext(context.Background(), nil, engine.NewEvaluator(engine.NewEventQueue(), 10*time.Millisecond), engine.ContextOpts{})
 	c.TemplateData = c.TemplateData.Merge(store)
 
 	for _, v := range components {

@@ -1,0 +1,10 @@
+recursive: true
+all: true
+filename: "mock_{{ .InterfaceNameSnake }}.go"
+mockname: "{{ .InterfaceName }}"
+outpkg: "{{ base .PackageName }}mocks"
+with-expecter: true
+dir: "pkg/mocks/{{ .PackageName }}mocks"
+packages:
+  github.com/tak-sh/tak/pkg/headless/step: { }
+  github.com/tak-sh/tak/pkg/headless/engine: { }

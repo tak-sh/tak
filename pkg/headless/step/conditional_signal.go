@@ -2,14 +2,16 @@ package step
 
 import (
 	"errors"
+	"fmt"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
+	"strings"
 )
 
 var _ grpcutils.ProtoWrapper[*v1beta1.ConditionalSignal] = &ConditionalSignal{}
-var _ Signaller = &ConditionalSignal{}
+var _ engine.PathNode = &ConditionalSignal{}
 
 func NewConditionalSignal(s *v1beta1.ConditionalSignal) (*ConditionalSignal, error) {
 	out := &ConditionalSignal{
@@ -42,16 +44,28 @@ type ConditionalSignal struct {
 	Conditional *engine.TemplateRenderer
 }
 
-func (s *ConditionalSignal) CheckSignal(st *engine.TemplateData) *v1beta1.ConditionalSignal {
-	if s == nil {
-		return nil
+func (s *ConditionalSignal) String() string {
+	switch s.Signal {
+	case v1beta1.ConditionalSignal_success:
+		out := make([]string, 0, 2)
+		out = append(out, "success")
+		if s.GetMessage() != "" {
+			out = append(out, s.GetMessage())
+		}
+		return strings.Join(out, ": ")
+	case v1beta1.ConditionalSignal_error:
+		return fmt.Sprintf("error: %s", s.GetMessage())
+	default:
+		return ""
 	}
+}
 
-	if engine.IsTruthy(s.Conditional.Render(st)) {
-		return s.ConditionalSignal
-	}
+func (s *ConditionalSignal) GetId() string {
+	return ""
+}
 
-	return nil
+func (s *ConditionalSignal) IsReady(st *engine.TemplateData) bool {
+	return engine.IsTruthy(s.Conditional.Render(st))
 }
 
 func (s *ConditionalSignal) ToProto() *v1beta1.ConditionalSignal {

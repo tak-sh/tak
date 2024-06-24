@@ -243,8 +243,12 @@ type DropdownModel struct {
 	Comp  *v1beta1.Component_Dropdown
 }
 
+func (d *DropdownModel) GetId() string {
+	return d.Props.ID
+}
+
 func (d *DropdownModel) Init() tea.Cmd {
-	if d.Comp.Options[d.List.Index()].GetDisabled() {
+	if len(d.Comp.Options) > 0 && d.Comp.Options[d.List.Index()].GetDisabled() {
 		d.List.CursorDown()
 	}
 	return nil

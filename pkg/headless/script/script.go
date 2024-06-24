@@ -14,12 +14,12 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/headless/step"
+	"github.com/tak-sh/tak/pkg/headless/step/stepper"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
 	"github.com/tak-sh/tak/pkg/utils/ptr"
 	"github.com/tak-sh/tak/pkg/validate"
 	"log/slog"
 	"strconv"
-	"time"
 )
 
 var desktop = device.Info{
@@ -31,53 +31,41 @@ var desktop = device.Info{
 }
 
 type RunOpts struct {
-	Store        *engine.TemplateData
-	PreRun       []chromedp.Action
-	StartingStep int
-	Headless     bool
+	Store       *engine.TemplateData
+	PreRun      []chromedp.Action
+	PostRunFunc PostRunFunc
+	ChromeOpts  []chromedp.ExecAllocatorOption
 }
+
+type PostRunFunc func(c *engine.Context, s *step.Step) error
 
 func (r RunOpts) DefaultOptions() RunOpts {
-	return RunOpts{
-		Headless: true,
-	}
+	return RunOpts{}
 }
 
-func WithHeadless(b bool) opts.Opt[RunOpts] {
+func WithChromeOpts(o ...chromedp.ExecAllocatorOption) opts.Opt[RunOpts] {
 	return func(r *RunOpts) {
-		r.Headless = b
+		r.ChromeOpts = append(r.ChromeOpts, o...)
 	}
 }
 
-func WithPreRunActions(act ...chromedp.Action) opts.Opt[RunOpts] {
+func WithPostRunFunc(f PostRunFunc) opts.Opt[RunOpts] {
 	return func(r *RunOpts) {
-		r.PreRun = append(r.PreRun, act...)
+		r.PostRunFunc = f
 	}
 }
 
-func WithStartingStep(i int) opts.Opt[RunOpts] {
-	return func(r *RunOpts) {
-		r.StartingStep = i
-	}
-}
-
-func WithStore(st *engine.TemplateData) opts.Opt[RunOpts] {
-	return func(r *RunOpts) {
-		r.Store = st
-	}
-}
-
-func Run(c *engine.Context, s *Script, o ...opts.Opt[RunOpts]) (context.Context, error) {
+func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts]) (context.Context, error) {
 	ctx, cancel := context.WithCancelCause(c.Context)
 
 	op := opts.DefaultApply(o...)
+
 	logger := contexts.GetLogger(ctx)
 	c.TemplateData = c.TemplateData.Merge(op.Store)
 
 	chromeOpts := append(
 		chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.UserDataDir("./data"),
-		chromedp.Flag("headless", op.Headless),
+		op.ChromeOpts...,
 	)
 	execCtx, _ := chromedp.NewExecAllocator(ctx, chromeOpts...)
 
@@ -94,22 +82,22 @@ func Run(c *engine.Context, s *Script, o ...opts.Opt[RunOpts]) (context.Context,
 	acts = append(acts, op.PreRun...)
 	acts = append(acts, chromedp.ActionFunc(func(ctx context.Context) error {
 		c.Context = ctx
-		n := len(s.Steps)
-		for i := op.StartingStep; i < n; i++ {
-			v := s.Steps[i]
+
+		for handle := st.Next(c); handle != nil; handle = st.Next(c) {
+			if handle.Err() != nil {
+				logger.Error("Failed to get next step.", slog.String("err", handle.Err().Error()))
+				return handle.Err()
+			}
+
+			if handle.Signal() != nil {
+				logger.Info("Reached success condition.", slog.Any("signal", handle.Signal().String()))
+				return nil
+			}
+
+			v := handle.Val()
 			logger.Info("Running action.", slog.String("action", v.Action.String()))
 
-			if i > 0 {
-				err := c.RefreshPageState()
-				if err != nil {
-					logger.Error("Failed to load page.", slog.String("err", err.Error()))
-				}
-
-				err = chromedp.Location(&c.TemplateData.Browser.Url).Do(ctx)
-				if err != nil {
-					logger.Error("Failed to get browser URL.")
-				}
-
+			if handle.Idx() > 0 {
 				if s.ScreenShotBefore {
 					_, screenErr := c.Screenshot(c.Context, v.GetId())
 					if screenErr != nil {
@@ -118,12 +106,10 @@ func Run(c *engine.Context, s *Script, o ...opts.Opt[RunOpts]) (context.Context,
 				}
 			}
 
-			success, err := evalStep(c, s, logger, i)
+			cont, err := s.evalStep(c, v, op)
 			errored := err != nil
 			if errored {
 				logger.Error("Failed to run step.", slog.String("id", v.GetId()), slog.String("err", err.Error()))
-			} else if !success {
-				logger.Error("Failed to run step.")
 			}
 
 			if errored || s.ScreenShotAfter {
@@ -135,7 +121,18 @@ func Run(c *engine.Context, s *Script, o ...opts.Opt[RunOpts]) (context.Context,
 					return errors.Join(fmt.Errorf("failed to run step %s, see what happened here: %s", v.GetId(), fp), err)
 				}
 			}
+
+			if !cont {
+				logger.Info("Step signalled a completion. Stopping script.", slog.String("step", v.String()))
+				return nil
+			}
+
+			err = c.RefreshPageState()
+			if err != nil {
+				contexts.GetLogger(ctx).Error("Failed to load page.", slog.String("err", err.Error()))
+			}
 		}
+
 		return nil
 	}))
 
@@ -160,21 +157,22 @@ func New(s *v1beta1.Script) (*Script, error) {
 		return nil, except.NewInvalid("at least 1 step required")
 	}
 
-	out := &Script{
-		Steps:  make([]*step.Step, 0, len(s.Steps)),
-		script: s,
+	if len(s.GetSignals()) == 0 {
+		return nil, except.NewInvalid("at least 1 success signal is required for the script")
 	}
 
+	out := &Script{
+		Steps:   make([]*step.Step, 0, len(s.Steps)),
+		Signals: make([]*step.ConditionalSignal, len(s.Signals)),
+		script:  s,
+	}
 	var err error
-	condSigs := make([]*step.ConditionalSignal, len(s.Signals))
 	for i, v := range s.GetSignals() {
-		condSigs[i], err = step.NewConditionalSignal(v)
+		out.Signals[i], err = step.NewConditionalSignal(v)
 		if err != nil {
 			return nil, errors.Join(except.NewInvalid("script signal #%d", i), err)
 		}
 	}
-
-	out.Decider = step.NewDecider(condSigs)
 
 	for i := range s.GetSteps() {
 		v := s.Steps[i]
@@ -208,9 +206,9 @@ var _ validate.Validator = &Script{}
 
 type Script struct {
 	Steps            []*step.Step
+	Signals          []*step.ConditionalSignal
 	ScreenShotBefore bool
 	ScreenShotAfter  bool
-	Decider          step.Decider
 
 	script *v1beta1.Script
 }
@@ -242,52 +240,27 @@ func (c *Script) ToProto() *v1beta1.Script {
 	return c.script
 }
 
-func gatherPaths(steps []*step.Step) []step.PathNode {
-	out := make([]step.PathNode, 0, 1)
-	n := len(steps)
-	if n == 0 {
-		return out
+func (c *Script) evalStep(ctx *engine.Context, st *step.Step, op RunOpts) (cont bool, err error) {
+	err = ctx.Evaluator.Eval(ctx, st)
+	cont = err == nil
+	if !cont {
+		return false, err
 	}
 
-	out = append(out, steps[0])
+	if op.PostRunFunc != nil {
+		err = op.PostRunFunc(ctx, st)
+	}
 
-	// if the step contains a branching action, we should include the next non-branch step in case
-	// the branch is not true.
-	if _, ok := steps[0].CompiledAction.(*step.BranchAction); ok && n > 1 {
-		for i := 1; i < len(steps); i++ {
-			v := steps[i]
-			out = append(out, v)
-			if _, isBranch := v.CompiledAction.(*step.BranchAction); !isBranch {
-				break
+	for _, v := range st.ConditionalSignals {
+		if v.IsReady(ctx.TemplateData) {
+			switch v.GetSignal() {
+			case v1beta1.ConditionalSignal_success:
+				return false, nil
+			case v1beta1.ConditionalSignal_error:
+				return false, except.NewAborted(v.GetMessage())
 			}
 		}
 	}
 
-	return out
-}
-
-func evalStep(c *engine.Context, s *Script, logger *slog.Logger, i int) (bool, error) {
-	v := s.Steps[i]
-
-	decided, stop, err := s.Decider.ChoosePath(c, time.Second*10, gatherPaths(s.Steps[i:])...)
-	if err != nil {
-		logger.Error("Failed to choose a path.", slog.String("err", err.Error()))
-		return false, err
-	}
-
-	if stop {
-		return false, nil
-	}
-
-	switch decided.(type) {
-	case *step.Step:
-		err = c.Evaluator.Eval(c, v)
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	default:
-		logger.Error("Unknown path", slog.Any("path", decided), slog.String("step", v.GetId()))
-		return false, except.NewInternal("unsure on how to continue")
-	}
+	return
 }

@@ -1,5 +1,7 @@
 package engine
 
+import "time"
+
 type EventQueue chan Event
 
 func NewEventQueue() EventQueue {
@@ -10,12 +12,20 @@ type Event interface {
 	eventSigil()
 }
 
+type PathNode interface {
+	GetId() string
+
+	// IsReady lets the Decider know that the PathNode is either  ready
+	// to be taken, or is not ready to be taken.
+	IsReady(st *TemplateData) bool
+}
+
 // Instruction is an individual pieces of work to be evaluated at runtime.
 // Every Instruction should have their Eval method called via the Evaluator
 // rather than calling it directly.
 type Instruction interface {
 	GetId() string
-	Eval(c *Context) error
+	Eval(c *Context, to time.Duration) error
 }
 
 var _ Event = &NextInstructionEvent{}
@@ -34,10 +44,11 @@ type Evaluator interface {
 	Prev() Instruction
 }
 
-func NewEvaluator(eq EventQueue) Evaluator {
+func NewEvaluator(eq EventQueue, to time.Duration) Evaluator {
 	out := &evaluator{
 		Q:         eq,
 		Evaluated: make([]Instruction, 0),
+		Timeout:   to,
 	}
 
 	return out
@@ -46,6 +57,7 @@ func NewEvaluator(eq EventQueue) Evaluator {
 type evaluator struct {
 	Q         EventQueue
 	Evaluated []Instruction
+	Timeout   time.Duration
 }
 
 func (e *evaluator) Eval(c *Context, i Instruction) error {
@@ -55,7 +67,7 @@ func (e *evaluator) Eval(c *Context, i Instruction) error {
 		}
 	}
 
-	err := i.Eval(c)
+	err := i.Eval(c, e.Timeout)
 	if err != nil {
 		return err
 	}
