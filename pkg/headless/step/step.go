@@ -65,10 +65,10 @@ type Step struct {
 	ConditionalSignals []*ConditionalSignal
 }
 
-func (s *Step) IsReady(st *engine.TemplateData) bool {
+func (s *Step) IsReady(c *engine.Context) bool {
 	v, ok := s.CompiledAction.(engine.PathNode)
 	if ok {
-		return v.IsReady(st)
+		return v.IsReady(c)
 	}
 
 	return true

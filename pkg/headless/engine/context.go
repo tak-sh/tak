@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/flosch/pongo2/v6"
 	"github.com/goccy/go-json"
@@ -33,6 +35,7 @@ type Context struct {
 type Browser interface {
 	RefreshPage(ctx context.Context, content *string) error
 	URL(ctx context.Context) (string, error)
+	Exists(ctx context.Context, sel string) bool
 }
 
 type ContextOpts struct {
@@ -72,7 +75,11 @@ func (c *Context) RefreshPageState() error {
 		return err
 	}
 
-	c.TemplateData.CurrentPage, _ = goquery.NewDocumentFromReader(strings.NewReader(c.TemplateData.Browser.Content))
+	c.TemplateData.CurrentPage, err = goquery.NewDocumentFromReader(strings.NewReader(c.TemplateData.Browser.Content))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -302,6 +309,14 @@ func NewBrowser() Browser {
 }
 
 type browser struct {
+}
+
+func (p *browser) Exists(ctx context.Context, sel string) (exists bool) {
+	_ = chromedp.QueryAfter(sel, func(ctx context.Context, id runtime.ExecutionContextID, node ...*cdp.Node) error {
+		exists = len(node) > 0
+		return nil
+	}, chromedp.RetryInterval(0)).Do(ctx)
+	return
 }
 
 func (p *browser) URL(ctx context.Context) (s string, err error) {

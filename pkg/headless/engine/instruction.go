@@ -17,7 +17,7 @@ type PathNode interface {
 
 	// IsReady lets the Decider know that the PathNode is either  ready
 	// to be taken, or is not ready to be taken.
-	IsReady(st *TemplateData) bool
+	IsReady(c *Context) bool
 }
 
 // Instruction is an individual pieces of work to be evaluated at runtime.

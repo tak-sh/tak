@@ -64,8 +64,8 @@ func (s *ConditionalSignal) GetId() string {
 	return ""
 }
 
-func (s *ConditionalSignal) IsReady(st *engine.TemplateData) bool {
-	return engine.IsTruthy(s.Conditional.Render(st))
+func (s *ConditionalSignal) IsReady(st *engine.Context) bool {
+	return engine.IsTruthy(s.Conditional.Render(st.TemplateData))
 }
 
 func (s *ConditionalSignal) ToProto() *v1beta1.ConditionalSignal {

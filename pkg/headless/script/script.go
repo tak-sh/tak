@@ -252,7 +252,7 @@ func (c *Script) evalStep(ctx *engine.Context, st *step.Step, op RunOpts) (cont 
 	}
 
 	for _, v := range st.ConditionalSignals {
-		if v.IsReady(ctx.TemplateData) {
+		if v.IsReady(ctx) {
 			switch v.GetSignal() {
 			case v1beta1.ConditionalSignal_success:
 				return false, nil

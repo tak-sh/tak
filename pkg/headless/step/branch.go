@@ -71,8 +71,8 @@ func (b *BranchAction) ShouldBranch(c *engine.Context) bool {
 	return engine.IsTruthy(b.ShouldRunCond.Render(c.TemplateData))
 }
 
-func (b *BranchAction) IsReady(st *engine.TemplateData) bool {
-	return engine.IsTruthy(b.ShouldRunCond.Render(st))
+func (b *BranchAction) IsReady(c *engine.Context) bool {
+	return engine.IsTruthy(b.ShouldRunCond.Render(c.TemplateData))
 }
 
 func (b *BranchAction) String() string {

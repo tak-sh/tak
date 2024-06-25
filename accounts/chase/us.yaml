@@ -4,7 +4,8 @@ metadata:
 spec:
   login_script:
     signals:
-      - if: "{{ 'web/auth/dashboard#/dashboard/overview' in browser.url }}"
+      - if: |
+          {{ browser.content|html_select:"mds-button[text='Sign out']" }}
         message: Login successful
         signal: success
     steps:

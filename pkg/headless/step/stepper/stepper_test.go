@@ -145,7 +145,7 @@ func (s *StepperTestSuite) TestNext() {
 				},
 			}
 
-			act1.PathNode.EXPECT().IsReady(c.TemplateData).Return(true)
+			act1.PathNode.EXPECT().IsReady(c).Return(true)
 
 			success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
 			expectedSig := &step.ConditionalSignal{Conditional: success, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}}
@@ -182,7 +182,7 @@ func (s *StepperTestSuite) TestNext() {
 			brow.EXPECT().RefreshPage(c.Context, &c.TemplateData.Browser.Content).Return(nil)
 			brow.EXPECT().URL(mock.Anything).Return("derp1.com", nil)
 
-			act1.PathNode.EXPECT().IsReady(c.TemplateData).Return(false)
+			act1.PathNode.EXPECT().IsReady(c).Return(false)
 			success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
 			st, _ := New(
 				[]*step.ConditionalSignal{
@@ -219,10 +219,10 @@ func (s *StepperTestSuite) TestNext() {
 			brow.EXPECT().RefreshPage(c.Context, &c.TemplateData.Browser.Content).Return(nil)
 			brow.EXPECT().URL(mock.Anything).Return("derp1.com", nil)
 
-			act1.PathNode.EXPECT().IsReady(c.TemplateData).Return(false)
+			act1.PathNode.EXPECT().IsReady(c).Return(false)
 
 			calls := 0
-			act2.PathNode.EXPECT().IsReady(c.TemplateData).RunAndReturn(func(data *engine.TemplateData) bool {
+			act2.PathNode.EXPECT().IsReady(c).RunAndReturn(func(data *engine.Context) bool {
 				calls++
 				return calls > 2
 			})
@@ -270,7 +270,7 @@ func (s *StepperTestSuite) TestNext() {
 			brow.EXPECT().RefreshPage(c.Context, &c.TemplateData.Browser.Content).Return(nil)
 			brow.EXPECT().URL(mock.Anything).Return("derp1.com", nil)
 
-			act1.PathNode.EXPECT().IsReady(c.TemplateData).Return(false)
+			act1.PathNode.EXPECT().IsReady(c).Return(false)
 
 			success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
 			errSignal, _ := engine.CompileTemplate("{{browser.url == 'derp1.com'}}")

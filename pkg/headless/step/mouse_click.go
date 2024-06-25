@@ -41,9 +41,8 @@ func (m *MouseClick) GetId() string {
 	return m.ID
 }
 
-func (m *MouseClick) IsReady(st *engine.TemplateData) bool {
-	sel := m.SelectorTemp.Render(st)
-	return len(st.CurrentPage.Find(sel).Nodes) > 0
+func (m *MouseClick) IsReady(c *engine.Context) bool {
+	return c.Browser.Exists(c.Context, m.SelectorTemp.Render(c.TemplateData))
 }
 
 func (m *MouseClick) Validate() error {

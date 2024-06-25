@@ -21,6 +21,53 @@ func (_m *Browser) EXPECT() *Browser_Expecter {
 	return &Browser_Expecter{mock: &_m.Mock}
 }
 
+// Exists provides a mock function with given fields: ctx, sel
+func (_m *Browser) Exists(ctx context.Context, sel string) bool {
+	ret := _m.Called(ctx, sel)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Exists")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(context.Context, string) bool); ok {
+		r0 = rf(ctx, sel)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// Browser_Exists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Exists'
+type Browser_Exists_Call struct {
+	*mock.Call
+}
+
+// Exists is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sel string
+func (_e *Browser_Expecter) Exists(ctx interface{}, sel interface{}) *Browser_Exists_Call {
+	return &Browser_Exists_Call{Call: _e.mock.On("Exists", ctx, sel)}
+}
+
+func (_c *Browser_Exists_Call) Run(run func(ctx context.Context, sel string)) *Browser_Exists_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Browser_Exists_Call) Return(_a0 bool) *Browser_Exists_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Browser_Exists_Call) RunAndReturn(run func(context.Context, string) bool) *Browser_Exists_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RefreshPage provides a mock function with given fields: ctx, content
 func (_m *Browser) RefreshPage(ctx context.Context, content *string) error {
 	ret := _m.Called(ctx, content)

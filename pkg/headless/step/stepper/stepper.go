@@ -118,7 +118,7 @@ func (s *stepper) Next(c *engine.Context) Handle {
 	defer ticker.Stop()
 	for {
 		for _, v := range s.Signals {
-			if v.IsReady(c.TemplateData) {
+			if v.IsReady(c) {
 				if v.Signal == v1beta1.ConditionalSignal_error {
 					return &handle{Error: errors.New(v.GetMessage()), Sig: v}
 				}
@@ -127,7 +127,7 @@ func (s *stepper) Next(c *engine.Context) Handle {
 		}
 
 		for _, v := range s.Current.Children {
-			if v.Val.IsReady(c.TemplateData) {
+			if v.Val.IsReady(c) {
 				s.Current = v
 				return &handle{Node: v}
 			}

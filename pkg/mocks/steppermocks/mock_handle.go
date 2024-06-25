@@ -157,6 +157,51 @@ func (_c *Handle_Signal_Call) RunAndReturn(run func() *step.ConditionalSignal) *
 	return _c
 }
 
+// String provides a mock function with given fields:
+func (_m *Handle) String() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for String")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// Handle_String_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'String'
+type Handle_String_Call struct {
+	*mock.Call
+}
+
+// String is a helper method to define mock.On call
+func (_e *Handle_Expecter) String() *Handle_String_Call {
+	return &Handle_String_Call{Call: _e.mock.On("String")}
+}
+
+func (_c *Handle_String_Call) Run(run func()) *Handle_String_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Handle_String_Call) Return(_a0 string) *Handle_String_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Handle_String_Call) RunAndReturn(run func() string) *Handle_String_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Val provides a mock function with given fields:
 func (_m *Handle) Val() *step.Step {
 	ret := _m.Called()

@@ -65,17 +65,17 @@ func (_c *PathNode_GetId_Call) RunAndReturn(run func() string) *PathNode_GetId_C
 	return _c
 }
 
-// IsReady provides a mock function with given fields: st
-func (_m *PathNode) IsReady(st *engine.TemplateData) bool {
-	ret := _m.Called(st)
+// IsReady provides a mock function with given fields: c
+func (_m *PathNode) IsReady(c *engine.Context) bool {
+	ret := _m.Called(c)
 
 	if len(ret) == 0 {
 		panic("no return value specified for IsReady")
 	}
 
 	var r0 bool
-	if rf, ok := ret.Get(0).(func(*engine.TemplateData) bool); ok {
-		r0 = rf(st)
+	if rf, ok := ret.Get(0).(func(*engine.Context) bool); ok {
+		r0 = rf(c)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
@@ -89,14 +89,14 @@ type PathNode_IsReady_Call struct {
 }
 
 // IsReady is a helper method to define mock.On call
-//   - st *engine.TemplateData
-func (_e *PathNode_Expecter) IsReady(st interface{}) *PathNode_IsReady_Call {
-	return &PathNode_IsReady_Call{Call: _e.mock.On("IsReady", st)}
+//   - c *engine.Context
+func (_e *PathNode_Expecter) IsReady(c interface{}) *PathNode_IsReady_Call {
+	return &PathNode_IsReady_Call{Call: _e.mock.On("IsReady", c)}
 }
 
-func (_c *PathNode_IsReady_Call) Run(run func(st *engine.TemplateData)) *PathNode_IsReady_Call {
+func (_c *PathNode_IsReady_Call) Run(run func(c *engine.Context)) *PathNode_IsReady_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*engine.TemplateData))
+		run(args[0].(*engine.Context))
 	})
 	return _c
 }
@@ -106,7 +106,7 @@ func (_c *PathNode_IsReady_Call) Return(_a0 bool) *PathNode_IsReady_Call {
 	return _c
 }
 
-func (_c *PathNode_IsReady_Call) RunAndReturn(run func(*engine.TemplateData) bool) *PathNode_IsReady_Call {
+func (_c *PathNode_IsReady_Call) RunAndReturn(run func(*engine.Context) bool) *PathNode_IsReady_Call {
 	_c.Call.Return(run)
 	return _c
 }

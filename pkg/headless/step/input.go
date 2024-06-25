@@ -39,8 +39,8 @@ func (i *Input) GetId() string {
 	return i.ID
 }
 
-func (i *Input) IsReady(st *engine.TemplateData) bool {
-	return len(st.CurrentPage.Find(i.GetSelector()).Nodes) > 0
+func (i *Input) IsReady(c *engine.Context) bool {
+	return c.Browser.Exists(c.Context, i.GetSelector())
 }
 
 func (i *Input) Validate() error {
