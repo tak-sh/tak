@@ -1,0 +1,13 @@
+{
+  "$id": "tak.sh.api.settings.v1beta1.Settings.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "chrome_data_directory": {
+      "description": "The root directory housing all user data. Defaults to ~/.tak/chrome_user_data.",
+      "type": "string"
+    }
+  },
+  "title": "Settings",
+  "type": "object"
+}

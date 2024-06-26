@@ -1,34 +1,43 @@
 package settings
 
 import (
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/structs"
+	"github.com/knadh/koanf/v2"
+	"github.com/tak-sh/tak/generated/go/api/settings/v1beta1"
+	"github.com/tak-sh/tak/pkg/protoenc"
 	"github.com/tak-sh/tak/pkg/utils/fileutils"
+	"github.com/tak-sh/tak/pkg/utils/ptr"
+	"google.golang.org/protobuf/proto"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var Default Settings
 
 const (
-	DirName            = ".tak"
-	LogDirName         = "logs"
-	LogFilename        = "tak.log"
-	AccountsDirName    = "accounts"
-	AccountDataDirName = "data"
+	DefaultSettingsEnvVar = "TAK_SETTINGS"
+	DirName               = ".tak"
+	LogDirName            = "logs"
+	LogFilename           = "tak.log"
+	FileName              = "tak.yaml"
+	ChromeUserDataDir     = "chrome_user_data"
 )
 
 var (
-	UserConfigDir, _ = os.UserConfigDir()
-	UserHomeDir, _   = os.UserHomeDir()
-	UserCacheDir, _  = os.UserCacheDir()
+	UserHomeDir, _  = os.UserHomeDir()
+	UserCacheDir, _ = os.UserCacheDir()
 
 	MaxLogFileSize = 10 * 1024 * 1024 // 10Mb
 )
 
 func init() {
-	Default = New("", UserConfigDir, UserCacheDir)
+	Default = New("", filepath.Join(UserHomeDir, DirName), UserCacheDir)
 }
 
 func NewLogger(level slog.Level, outputs []string) *slog.Logger {
@@ -60,10 +69,12 @@ func New(version, configDir, cacheDir string) Settings {
 	logDir := filepath.Join(cacheDir, LogDirName)
 	out := &settings{
 		Version: version,
-		SetDir:  filepath.Join(configDir, DirName),
+		SetDir:  configDir,
 		Cache:   cacheDir,
 		Log:     filepath.Join(logDir, LogFilename),
+		Config:  koanf.New("."),
 	}
+	out.SetFS = os.DirFS(out.SetDir)
 
 	_ = os.MkdirAll(logDir, os.ModePerm)
 	_ = os.MkdirAll(out.SetDir, os.ModePerm)
@@ -72,45 +83,56 @@ func New(version, configDir, cacheDir string) Settings {
 }
 
 type Settings interface {
-	CacheDir() string
 	SettingsDir() string
 	ScreenshotDir() string
-	HTMLDir(accountName string) string
 	LogFile() string
 	IsDev() bool
-	AccountDir(account string) string
-	AccountDataDir(account string) string
+	LoadFile() (*v1beta1.Settings, error)
+	Get() *v1beta1.Settings
 }
 
 type settings struct {
 	Version string
 	SetDir  string
+	SetFS   fs.FS
 	Cache   string
 	Log     string
+	Config  *koanf.Koanf
+
+	userHome string
+	sett     *v1beta1.Settings
 }
 
-func (s *settings) HTMLDir(accountName string) string {
-	basePath := fileutils.FindUpwardFrom("accounts", "", "")
-	if basePath == "" {
-		basePath, _ = os.Getwd()
+func (s *settings) Get() *v1beta1.Settings {
+	if s.sett == nil {
+		def := newDefaultSettings(s.SetDir)
+		s.sett, _ = s.LoadFile()
+		proto.Merge(s.sett, def)
+
+		if s.sett.ChromeDataDirectory != nil {
+			s.sett.ChromeDataDirectory = ptr.Ptr(fileutils.ExpandHome(s.userHome, *s.sett.ChromeDataDirectory))
+		}
+
+		_ = s.Config.Load(structs.Provider(s.sett, "json"), nil)
+
+		_ = s.Config.Load(env.Provider("TAK_", ".", func(s string) string {
+			return strings.ReplaceAll(strings.ToLower(strings.TrimPrefix(s, "TAK_")), "_", ".")
+		}), nil)
+
+		_ = s.Config.Unmarshal("", s.sett)
 	}
-
-	fp := filepath.Join(basePath, accountName, "html")
-	_ = os.MkdirAll(fp, os.ModePerm)
-
-	return fp
+	return s.sett
 }
 
-func (s *settings) AccountDataDir(account string) string {
-	d := filepath.Join(s.AccountDir(account), AccountDataDirName)
-	_ = os.MkdirAll(d, os.ModePerm)
-	return d
+func newDefaultSettings(settingsDir string) *v1beta1.Settings {
+	return &v1beta1.Settings{
+		ChromeDataDirectory: ptr.Ptr(filepath.Join(settingsDir, ChromeUserDataDir)),
+	}
 }
 
-func (s *settings) AccountDir(account string) string {
-	d := filepath.Join(s.SettingsDir(), AccountsDirName, account)
-	_ = os.MkdirAll(d, os.ModePerm)
-	return d
+func (s *settings) LoadFile() (*v1beta1.Settings, error) {
+	out := new(v1beta1.Settings)
+	return out, protoenc.UnmarshalFile(out, FileName, s.SetFS)
 }
 
 func (s *settings) LogFile() string {

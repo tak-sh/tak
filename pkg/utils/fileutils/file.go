@@ -3,6 +3,7 @@ package fileutils
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // FindUpwardFrom recursively searches upward in the filesystem from start
@@ -40,4 +41,12 @@ func FindUpwardFrom(name, start, end string) string {
 	}
 
 	return FindUpwardFrom(name, filepath.Dir(start), end)
+}
+
+// ExpandHome expands the filepath fp if it is prefixed with "~/".
+func ExpandHome(home, fp string) string {
+	if strings.HasPrefix(fp, "~/") {
+		fp = filepath.Join(home, fp[2:])
+	}
+	return fp
 }

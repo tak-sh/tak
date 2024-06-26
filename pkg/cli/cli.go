@@ -21,7 +21,7 @@ func New(version string) *cli.App {
 				Usage: "The path to the settings folder. Created if it does not exist.",
 				Value: settings.Default.SettingsDir(),
 				EnvVars: []string{
-					"TAK_SETTINGS",
+					settings.DefaultSettingsEnvVar,
 				},
 				Action: func(context *cli.Context, s string) error {
 					_, err := os.Stat(s)

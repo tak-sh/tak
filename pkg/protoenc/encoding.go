@@ -20,6 +20,15 @@ var (
 	}
 )
 
+func MarshalYAML(msg proto.Message) ([]byte, error) {
+	b, err := ProtoMarshal.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return yaml.JSONToYAML(b)
+}
+
 func UnmarshalFile(msg proto.Message, name string, f fs.FS) error {
 	ext := filepath.Ext(name)
 	b, err := fs.ReadFile(f, name)
@@ -31,12 +40,16 @@ func UnmarshalFile(msg proto.Message, name string, f fs.FS) error {
 	case ".json":
 		return ProtoUnmarshal.Unmarshal(b, msg)
 	case ".yaml", ".yml":
-		j, err := yaml.YAMLToJSON(b)
-		if err != nil {
-			return err
-		}
-
-		return ProtoUnmarshal.Unmarshal(j, msg)
+		return UnmarshalYAML(msg, b)
 	}
 	return fmt.Errorf("%s is not a supported file extension (.yaml, .yml, .json)", name)
+}
+
+func UnmarshalYAML(msg proto.Message, b []byte) error {
+	j, err := yaml.YAMLToJSON(b)
+	if err != nil {
+		return err
+	}
+
+	return ProtoUnmarshal.Unmarshal(j, msg)
 }

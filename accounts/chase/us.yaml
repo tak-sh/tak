@@ -5,7 +5,7 @@ spec:
   login_script:
     signals:
       - if: |
-          {{ browser.content|html_select:"mds-button[text='Sign out']" }}
+          {{ browser.content|html_select:"mds-brand-bar[sign-in-out-button-text='Sign out']" }}
         message: Login successful
         signal: success
     steps:

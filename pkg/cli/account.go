@@ -139,7 +139,17 @@ func NewAccountSyncCommand() *cli.Command {
 				return err
 			}
 
-			scriptCtx, err := script.Run(c, s, st, script.WithChromeOpts(chromedp.Flag("headless", !cmd.Bool("mfa"))))
+			chromeOpts := []chromedp.ExecAllocatorOption{
+				chromedp.Flag("headless", !cmd.Bool("mfa")),
+			}
+
+			if cdd := settings.Default.Get().GetChromeDataDirectory(); cdd != "" {
+				chromeOpts = append(chromeOpts, chromedp.UserDataDir(cdd))
+			}
+
+			scriptCtx, err := script.Run(c, s, st,
+				script.WithChromeOpts(chromeOpts...),
+			)
 			if err != nil {
 				return err
 			}

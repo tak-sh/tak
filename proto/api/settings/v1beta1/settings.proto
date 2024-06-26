@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package tak.sh.api.settings.v1beta1;
+
+option go_package = "github.com/tak-sh/tak/generated/go/api/settings/v1beta1";
+
+message Settings {
+  // The root directory housing all user data. Defaults to ~/.tak/chrome_user_data.
+  // Accepts ~ to represent the user's home.
+  optional string chrome_data_directory = 1 [json_name = "chromeDataDirectory"];
+}

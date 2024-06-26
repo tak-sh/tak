@@ -70,7 +70,9 @@ type ConditionalSignal_Signal int32
 
 const (
 	ConditionalSignal_unknown ConditionalSignal_Signal = 0
-	// A terminating signal that the operation is complete.
+	// A terminating signal that the operation is complete. If this signal is sent for
+	// a step, the Step will not run and effectively skips it. If it's sent for the
+	// Script, then the Script exits and is considered complete.
 	ConditionalSignal_success ConditionalSignal_Signal = 1
 	// A terminating signal that an error has occurred.
 	ConditionalSignal_error ConditionalSignal_Signal = 2
@@ -123,7 +125,9 @@ type Script struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Steps   []*Step              `protobuf:"bytes,1,rep,name=steps,proto3" json:"steps,omitempty"`
+	Steps []*Step `protobuf:"bytes,1,rep,name=steps,proto3" json:"steps,omitempty"`
+	// The signal to mark that the Script has completed. At least one success signal
+	// is required.
 	Signals []*ConditionalSignal `protobuf:"bytes,2,rep,name=signals,proto3" json:"signals,omitempty"`
 }
 
