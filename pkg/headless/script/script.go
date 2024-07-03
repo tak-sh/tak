@@ -19,6 +19,7 @@ import (
 	"github.com/tak-sh/tak/pkg/utils/ptr"
 	"github.com/tak-sh/tak/pkg/validate"
 	"log/slog"
+	"slices"
 	"strconv"
 )
 
@@ -81,7 +82,7 @@ func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts
 
 	acts = append(acts, op.PreRun...)
 	acts = append(acts, chromedp.ActionFunc(func(ctx context.Context) error {
-		c.Context = ctx
+		c = c.WithContext(ctx)
 
 		for handle := st.Next(c); handle != nil; handle = st.Next(c) {
 			if handle.Err() != nil {
@@ -94,10 +95,10 @@ func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts
 				return nil
 			}
 
-			v := handle.Val()
+			v := handle.Node().Val
 			logger.Info("Running action.", slog.String("action", v.Action.String()))
 
-			if handle.Idx() > 0 {
+			if handle.Node().Idx > 0 {
 				if s.ScreenShotBefore {
 					_, screenErr := c.Screenshot(c.Context, v.GetId())
 					if screenErr != nil {
@@ -157,8 +158,11 @@ func New(s *v1beta1.Script) (*Script, error) {
 		return nil, except.NewInvalid("at least 1 step required")
 	}
 
-	if len(s.GetSignals()) == 0 {
-		return nil, except.NewInvalid("at least 1 success signal is required for the script")
+	idx := slices.IndexFunc(s.GetSignals(), func(signal *v1beta1.ConditionalSignal) bool {
+		return signal.GetSignal() == v1beta1.ConditionalSignal_success
+	})
+	if idx < 0 {
+		return nil, except.NewInvalid("at least 1 success condition required")
 	}
 
 	out := &Script{

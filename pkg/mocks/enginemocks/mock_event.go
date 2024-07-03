@@ -17,6 +17,51 @@ func (_m *Event) EXPECT() *Event_Expecter {
 	return &Event_Expecter{mock: &_m.Mock}
 }
 
+// String provides a mock function with given fields:
+func (_m *Event) String() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for String")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// Event_String_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'String'
+type Event_String_Call struct {
+	*mock.Call
+}
+
+// String is a helper method to define mock.On call
+func (_e *Event_Expecter) String() *Event_String_Call {
+	return &Event_String_Call{Call: _e.mock.On("String")}
+}
+
+func (_c *Event_String_Call) Run(run func()) *Event_String_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Event_String_Call) Return(_a0 string) *Event_String_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Event_String_Call) RunAndReturn(run func() string) *Event_String_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // eventSigil provides a mock function with given fields:
 func (_m *Event) eventSigil() {
 	_m.Called()

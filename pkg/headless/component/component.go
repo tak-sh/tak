@@ -31,5 +31,7 @@ func New(c *v1beta1.Component) (Component, error) {
 	return nil, except.NewInvalid("blank components not allowed")
 }
 
-// SyncStateMsg is sent when the program has detected the user has finished populating a field.
-type SyncStateMsg func(id string, v *v1beta1.Value)
+type OnSubmitMsg struct {
+	Id    string
+	Value *v1beta1.Value
+}

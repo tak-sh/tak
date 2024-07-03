@@ -1,12 +1,14 @@
 package component
 
 import (
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/renderer"
+	"github.com/tak-sh/tak/pkg/ui/keyregistry"
 	"github.com/tak-sh/tak/pkg/utils/ptr"
 )
 
@@ -62,16 +64,24 @@ func (i *InputModel) Init() tea.Cmd {
 }
 
 func (i *InputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	cmds := make([]tea.Cmd, 0, 1)
 
 	switch t := msg.(type) {
-	case SyncStateMsg:
-		t(i.Props.ID, &v1beta1.Value{Str: ptr.Ptr(i.Text.Value())})
-	default:
-		i.Text, cmd = i.Text.Update(msg)
+	case tea.KeyMsg:
+		if key.Matches(t, keyregistry.DefaultKeys.Submit) {
+			cmds = append(cmds, func() tea.Msg {
+				return OnSubmitMsg{
+					Id:    i.Props.ID,
+					Value: &v1beta1.Value{Str: ptr.Ptr(i.Text.Value())},
+				}
+			})
+		}
 	}
+	var cmd tea.Cmd
+	i.Text, cmd = i.Text.Update(msg)
+	cmds = append(cmds, cmd)
 
-	return i, cmd
+	return i, tea.Batch(cmds...)
 }
 
 func (i *InputModel) View() string {

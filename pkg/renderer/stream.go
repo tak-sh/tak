@@ -28,7 +28,7 @@ type Response struct {
 func NewStream() Stream {
 	return &stream{
 		requests:  make(chan Model, 10),
-		responses: make(chan *Response, 10),
+		responses: map[string]chan *Response{},
 	}
 }
 
@@ -36,20 +36,26 @@ var _ Stream = &stream{}
 
 type stream struct {
 	requests  chan Model
-	responses chan *Response
+	responses map[string]chan *Response
 }
 
 func (c stream) Respond(v *Response) {
-	c.responses <- v
+	r := c.responses[v.ID]
+	if r == nil {
+		return
+	}
+	r <- v
 }
 
 func (c stream) Render(ctx context.Context, p Model) (*Response, error) {
+	resp := make(chan *Response)
+	c.responses[p.GetId()] = resp
 	c.requests <- p
 
 	select {
 	case <-ctx.Done():
 		return nil, context.Cause(ctx)
-	case v, ok := <-c.responses:
+	case v, ok := <-resp:
 		if !ok {
 			return nil, except.NewAborted("user cancelled prompt")
 		}

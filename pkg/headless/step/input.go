@@ -3,7 +3,6 @@ package step
 import (
 	"errors"
 	"fmt"
-	"github.com/chromedp/chromedp"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
@@ -56,7 +55,7 @@ func (i *Input) String() string {
 
 func (i *Input) Act(c *engine.Context) error {
 	val := i.ValueTemp.Render(c.TemplateData)
-	return chromedp.SendKeys(i.GetSelector(), val).Do(c)
+	return c.Browser.WriteInput(c, i.GetSelector(), val)
 }
 
 func (i *Input) GetID() string {

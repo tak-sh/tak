@@ -24,6 +24,7 @@ func NewStep(s *v1beta1.Step) (*Step, error) {
 		CompiledAction:     act,
 		Step:               s,
 		ConditionalSignals: make([]*ConditionalSignal, len(s.GetSignals())),
+		cancelChan:         make(chan error, 1),
 	}
 
 	for i, v := range s.GetSignals() {
@@ -63,6 +64,21 @@ type Step struct {
 	*v1beta1.Step
 	CompiledAction     Action
 	ConditionalSignals []*ConditionalSignal
+
+	cancelChan chan error
+}
+
+func (s *Step) String() string {
+	return s.CompiledAction.String()
+}
+
+func (s *Step) Cancel(err error) {
+	if s == nil {
+		return
+	}
+	if len(s.cancelChan) == 0 {
+		s.cancelChan <- err
+	}
 }
 
 func (s *Step) IsReady(c *engine.Context) bool {
@@ -74,8 +90,27 @@ func (s *Step) IsReady(c *engine.Context) bool {
 	return true
 }
 
-func (s *Step) Eval(c *engine.Context, to time.Duration) error {
-	return RunAction(c, s.CompiledAction, to)
+func (s *Step) drainCancelChan() {
+	for {
+		select {
+		case _, ok := <-s.cancelChan:
+			if !ok {
+				return
+			}
+		default:
+			return
+		}
+	}
+}
+
+func (s *Step) Eval(c *engine.Context, to time.Duration) (err error) {
+	s.drainCancelChan()
+	out := RunActionAsync(c, s.CompiledAction, to)
+	select {
+	case err = <-out:
+	case err = <-s.cancelChan:
+	}
+	return
 }
 
 func (s *Step) Validate() error {

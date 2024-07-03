@@ -3,7 +3,6 @@ package step
 import (
 	"errors"
 	"fmt"
-	"github.com/chromedp/chromedp"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
@@ -40,7 +39,7 @@ func (n *Nav) String() string {
 }
 
 func (n *Nav) Act(ctx *engine.Context) error {
-	return chromedp.Navigate(n.GetAddr()).Do(ctx)
+	return ctx.Browser.Navigate(ctx, n.GetAddr())
 }
 
 func (n *Nav) GetID() string {

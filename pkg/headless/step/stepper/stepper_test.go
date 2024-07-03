@@ -10,6 +10,7 @@ import (
 	"github.com/tak-sh/tak/pkg/mocks/enginemocks"
 	"github.com/tak-sh/tak/pkg/mocks/stepmocks"
 	"github.com/tak-sh/tak/pkg/utils/ptr"
+	"github.com/tak-sh/tak/pkg/utils/testutils"
 	"testing"
 	"time"
 )
@@ -50,16 +51,16 @@ func (s *StepperTestSuite) TestConstructor() {
 				act := new(stepmocks.Action)
 				act.EXPECT().String().Return("1")
 
-				act1 := newBranchAction()
+				act1 := testutils.NewBranchAction()
 				act1.Action.EXPECT().String().Return("2")
 
-				act2 := newBranchAction()
+				act2 := testutils.NewBranchAction()
 				act2.Action.EXPECT().String().Return("3")
 
 				act3 := new(stepmocks.Action)
 				act3.EXPECT().String().Return("4")
 
-				act4 := newBranchAction()
+				act4 := testutils.NewBranchAction()
 				act4.Action.EXPECT().String().Return("5")
 
 				return []*step.Step{
@@ -79,15 +80,11 @@ func (s *StepperTestSuite) TestConstructor() {
 	}
 
 	for desc, t := range tests {
-		sc, err := New([]*step.ConditionalSignal{
+		sc := New([]*step.ConditionalSignal{
 			{ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}},
 		}, t.GivenSteps)
-		if err != nil {
-			s.EqualError(err, t.Err, desc)
-			continue
-		}
 
-		s.Equal(t.Expected, sc.String())
+		s.Equal(t.Expected, sc.String(), desc)
 	}
 }
 
@@ -116,7 +113,7 @@ func (s *StepperTestSuite) TestNext() {
 
 			act1.EXPECT().String().Return("success")
 			success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
-			st, _ := New(
+			st := New(
 				[]*step.ConditionalSignal{
 					{Conditional: success, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}},
 				},
@@ -132,7 +129,7 @@ func (s *StepperTestSuite) TestNext() {
 			}
 		}(),
 		"signals when condition met when step is ready": func() test {
-			act1 := newAction()
+			act1 := testutils.NewAction()
 
 			c := &engine.Context{
 				Context: context.Background(),
@@ -145,11 +142,11 @@ func (s *StepperTestSuite) TestNext() {
 				},
 			}
 
-			act1.PathNode.EXPECT().IsReady(c).Return(true)
+			act1.PathNode.EXPECT().IsReady(mock.Anything).Return(true)
 
 			success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
 			expectedSig := &step.ConditionalSignal{Conditional: success, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}}
-			st, _ := New(
+			st := New(
 				[]*step.ConditionalSignal{
 					expectedSig,
 				},
@@ -166,7 +163,7 @@ func (s *StepperTestSuite) TestNext() {
 			}
 		}(),
 		"deadlines if success signal not met": func() test {
-			act1 := newAction()
+			act1 := testutils.NewAction()
 
 			brow := new(enginemocks.Browser)
 			c := &engine.Context{
@@ -179,12 +176,12 @@ func (s *StepperTestSuite) TestNext() {
 				Browser: brow,
 			}
 
-			brow.EXPECT().RefreshPage(c.Context, &c.TemplateData.Browser.Content).Return(nil)
+			brow.EXPECT().RefreshPage(mock.Anything, &c.TemplateData.Browser.Content).Return(nil)
 			brow.EXPECT().URL(mock.Anything).Return("derp1.com", nil)
 
-			act1.PathNode.EXPECT().IsReady(c).Return(false)
+			act1.PathNode.EXPECT().IsReady(mock.Anything).Return(false)
 			success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
-			st, _ := New(
+			st := New(
 				[]*step.ConditionalSignal{
 					{Conditional: success, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}},
 				},
@@ -202,8 +199,8 @@ func (s *StepperTestSuite) TestNext() {
 			}
 		}(),
 		"chooses correct branch": func() test {
-			act1 := newBranchAction()
-			act2 := newBranchAction()
+			act1 := testutils.NewBranchAction()
+			act2 := testutils.NewBranchAction()
 
 			brow := new(enginemocks.Browser)
 			c := &engine.Context{
@@ -216,20 +213,20 @@ func (s *StepperTestSuite) TestNext() {
 				Browser: brow,
 			}
 
-			brow.EXPECT().RefreshPage(c.Context, &c.TemplateData.Browser.Content).Return(nil)
+			brow.EXPECT().RefreshPage(mock.Anything, &c.TemplateData.Browser.Content).Return(nil)
 			brow.EXPECT().URL(mock.Anything).Return("derp1.com", nil)
 
-			act1.PathNode.EXPECT().IsReady(c).Return(false)
+			act1.PathNode.EXPECT().IsReady(mock.Anything).Return(false)
 
 			calls := 0
-			act2.PathNode.EXPECT().IsReady(c).RunAndReturn(func(data *engine.Context) bool {
+			act2.PathNode.EXPECT().IsReady(mock.Anything).RunAndReturn(func(data *engine.Context) bool {
 				calls++
 				return calls > 2
 			})
 			act2.Action.EXPECT().String().Return("success")
 
 			success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
-			st, _ := New(
+			st := New(
 				[]*step.ConditionalSignal{
 					{Conditional: success, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}},
 				},
@@ -254,7 +251,7 @@ func (s *StepperTestSuite) TestNext() {
 			}
 		}(),
 		"properly handles error signal": func() test {
-			act1 := newAction()
+			act1 := testutils.NewAction()
 
 			brow := new(enginemocks.Browser)
 			c := &engine.Context{
@@ -267,15 +264,15 @@ func (s *StepperTestSuite) TestNext() {
 				Browser: brow,
 			}
 
-			brow.EXPECT().RefreshPage(c.Context, &c.TemplateData.Browser.Content).Return(nil)
+			brow.EXPECT().RefreshPage(mock.Anything, &c.TemplateData.Browser.Content).Return(nil)
 			brow.EXPECT().URL(mock.Anything).Return("derp1.com", nil)
 
-			act1.PathNode.EXPECT().IsReady(c).Return(false)
+			act1.PathNode.EXPECT().IsReady(mock.Anything).Return(false)
 
 			success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
 			errSignal, _ := engine.CompileTemplate("{{browser.url == 'derp1.com'}}")
 			expectedSig := &step.ConditionalSignal{Conditional: errSignal, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_error, Message: ptr.Ptr("derp")}}
-			st, _ := New(
+			st := New(
 				[]*step.ConditionalSignal{
 					{Conditional: success, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}},
 					expectedSig,
@@ -295,45 +292,24 @@ func (s *StepperTestSuite) TestNext() {
 	}
 
 	for desc, t := range tests {
-		actual := t.Stepper.Next(t.Ctx)
-		if actual.Err() != nil {
-			s.EqualError(actual.Err(), t.ExpectedErr)
-		} else {
-			s.Equal(t.Expected, actual.String(), desc)
-		}
-		if t.ExpectedSignal != nil {
-			s.Equal(t.ExpectedSignal, actual.Signal())
-		}
+		func() {
+			ctx, cancel := context.WithTimeout(t.Ctx, 1*time.Second)
+			t.Ctx = t.Ctx.WithContext(ctx)
+			defer cancel()
+			actual := t.Stepper.Next(t.Ctx)
+			if actual.Err() != nil {
+				s.EqualError(actual.Err(), t.ExpectedErr)
+			} else {
+				s.Equal(t.Expected, actual.String(), desc)
+			}
+			if t.ExpectedSignal != nil {
+				s.Equal(t.ExpectedSignal, actual.Signal())
+			}
 
-		if t.AfterFunc != nil {
-			t.AfterFunc()
-		}
-	}
-}
-
-type branchAction struct {
-	*stepmocks.Branches
-	*stepmocks.Action
-	*enginemocks.PathNode
-}
-
-func newBranchAction() *branchAction {
-	return &branchAction{
-		Branches: new(stepmocks.Branches),
-		Action:   new(stepmocks.Action),
-		PathNode: new(enginemocks.PathNode),
-	}
-}
-
-type action struct {
-	*stepmocks.Action
-	*enginemocks.PathNode
-}
-
-func newAction() *action {
-	return &action{
-		Action:   new(stepmocks.Action),
-		PathNode: new(enginemocks.PathNode),
+			if t.AfterFunc != nil {
+				t.AfterFunc()
+			}
+		}()
 	}
 }
 

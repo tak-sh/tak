@@ -3,9 +3,11 @@ package cli
 import (
 	"context"
 	"errors"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chromedp/chromedp"
 	"github.com/tak-sh/tak/pkg/account"
 	"github.com/tak-sh/tak/pkg/contexts"
+	"github.com/tak-sh/tak/pkg/debug"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/headless/script"
@@ -13,6 +15,7 @@ import (
 	"github.com/tak-sh/tak/pkg/renderer"
 	"github.com/tak-sh/tak/pkg/settings"
 	"github.com/tak-sh/tak/pkg/ui"
+	"github.com/tak-sh/tak/pkg/ui/keyregistry"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
@@ -28,6 +31,7 @@ func NewAccountCommand() *cli.Command {
 			NewGetAccountCommand(),
 			NewAddAccountCommand(),
 			NewAccountSyncCommand(),
+			NewDebugAccountCommand(),
 		},
 	}
 	return cmd
@@ -65,6 +69,85 @@ func NewAddAccountCommand() *cli.Command {
 		Description: "Accepts either the name of an account or a path. Paths must contain a '/' character e.g. ./chase.yaml. Run 'tak acct get -r' to see a list of available accounts.",
 		Action: func(context *cli.Context) error {
 			return nil
+		},
+	}
+
+	return cmd
+}
+
+func NewDebugAccountCommand() *cli.Command {
+	cmd := &cli.Command{
+		Name:        "debug",
+		Aliases:     []string{"de"},
+		Usage:       "Debug an account manifest",
+		Args:        true,
+		ArgsUsage:   "The path to an account file.",
+		Description: "Run and test every step of a new account in an interactive terminal window.",
+		Action: func(cmd *cli.Context) error {
+			ss := cmd.String("screenshots")
+			fp := cmd.Args().First()
+			logger := contexts.GetLogger(cmd.Context)
+
+			acct, err := account.LoadFile(fp)
+			if err != nil {
+				return err
+			}
+
+			s, err := script.New(acct.GetSpec().GetLoginScript())
+			if err != nil {
+				return errors.Join(except.NewInvalid("failed to compile your login script"), err)
+			}
+
+			str := renderer.NewStream()
+			eq := engine.NewEventQueue()
+			stpper := debug.NewStepper(s.Signals, s.Steps)
+
+			scriptComp := ui.NewScriptComponent(acct.GetMetadata().GetName(), str, eq, logger)
+			debugComp := ui.NewDebugComponent(stpper, scriptComp)
+			app := ui.NewApp(debugComp)
+			app.Help.Keys = keyregistry.DebugKeys
+			p := tea.NewProgram(
+				app,
+				tea.WithContext(cmd.Context),
+				tea.WithAltScreen(),
+				tea.WithInput(os.Stdin),
+				tea.WithOutput(os.Stdout),
+			)
+
+			uiCtx, err := ui.Run(cmd.Context, p)
+			if err != nil {
+				logger.Error("Failed to start the UI.", slog.String("err", err.Error()))
+				return errors.Join(except.NewInternal("failed to start the UI"), err)
+			}
+
+			c, err := engine.NewContext(cmd.Context, str, engine.NewEvaluator(eq, 10*time.Second), engine.ContextOpts{
+				ScreenshotDir: ss,
+			})
+			if err != nil {
+				return err
+			}
+
+			chromeOpts := []chromedp.ExecAllocatorOption{
+				chromedp.Flag("headless", false),
+			}
+
+			if cdd := settings.Default.Get().GetChromeDataDirectory(); cdd != "" {
+				chromeOpts = append(chromeOpts, chromedp.UserDataDir(cdd))
+			}
+
+			scriptCtx, err := script.Run(c, s, stpper,
+				script.WithChromeOpts(chromeOpts...),
+			)
+			if err != nil {
+				return err
+			}
+
+			select {
+			case <-uiCtx.Done():
+				return context.Cause(uiCtx)
+			case <-scriptCtx.Done():
+				return context.Cause(scriptCtx)
+			}
 		},
 	}
 
@@ -119,9 +202,17 @@ func NewAccountSyncCommand() *cli.Command {
 			str := renderer.NewStream()
 			eq := engine.NewEventQueue()
 
-			bubble := ui.NewBubbleUI(acct, str, eq)
+			bubble := ui.NewScriptComponent(acct.GetMetadata().GetName(), str, eq, logger)
+			app := ui.NewApp(bubble)
+			p := tea.NewProgram(
+				app,
+				tea.WithContext(cmd.Context),
+				tea.WithAltScreen(),
+				tea.WithInput(os.Stdin),
+				tea.WithOutput(os.Stdout),
+			)
 
-			uiCtx, err := bubble.Start(cmd.Context, os.Stdin, os.Stdout)
+			uiCtx, err := ui.Run(cmd.Context, p)
 			if err != nil {
 				logger.Error("Failed to start the UI.", slog.String("err", err.Error()))
 				return errors.Join(except.NewInternal("failed to start the UI"), err)
@@ -134,11 +225,6 @@ func NewAccountSyncCommand() *cli.Command {
 				return err
 			}
 
-			st, err := stepper.New(s.Signals, s.Steps)
-			if err != nil {
-				return err
-			}
-
 			chromeOpts := []chromedp.ExecAllocatorOption{
 				chromedp.Flag("headless", !cmd.Bool("mfa")),
 			}
@@ -147,7 +233,7 @@ func NewAccountSyncCommand() *cli.Command {
 				chromeOpts = append(chromeOpts, chromedp.UserDataDir(cdd))
 			}
 
-			scriptCtx, err := script.Run(c, s, st,
+			scriptCtx, err := script.Run(c, s, stepper.New(s.Signals, s.Steps),
 				script.WithChromeOpts(chromeOpts...),
 			)
 			if err != nil {

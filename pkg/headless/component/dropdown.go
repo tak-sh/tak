@@ -13,6 +13,7 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/renderer"
+	"github.com/tak-sh/tak/pkg/ui/keyregistry"
 	"github.com/tak-sh/tak/pkg/utils/ptr"
 	"golang.org/x/net/html"
 	"google.golang.org/protobuf/proto"
@@ -255,15 +256,13 @@ func (d *DropdownModel) Init() tea.Cmd {
 }
 
 func (d *DropdownModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cmds := make([]tea.Cmd, 0, 2)
+
 	var cmd tea.Cmd
 	d.List, cmd = d.List.Update(msg)
+	cmds = append(cmds, cmd)
 
 	switch t := msg.(type) {
-	case SyncStateMsg:
-		v, ok := d.List.SelectedItem().(*dropdownItem)
-		if ok {
-			t(d.Props.ID, &v1beta1.Value{Str: ptr.Ptr(v.comp.Value)})
-		}
 	case tea.KeyMsg:
 		if key.Matches(t, list.DefaultKeyMap().CursorUp, list.DefaultKeyMap().CursorDown) {
 			idx := d.List.Index()
@@ -285,10 +284,20 @@ func (d *DropdownModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				direc = d.List.CursorDown
 			}
 			direc()
+		} else if key.Matches(t, keyregistry.DefaultKeys.Submit) {
+			v, ok := d.List.SelectedItem().(*dropdownItem)
+			if ok {
+				cmds = append(cmds, func() tea.Msg {
+					return OnSubmitMsg{
+						Id:    d.Props.ID,
+						Value: &v1beta1.Value{Str: ptr.Ptr(v.comp.Value)},
+					}
+				})
+			}
 		}
 	}
 
-	return d, cmd
+	return d, tea.Batch(cmds...)
 }
 
 func (d *DropdownModel) View() string {

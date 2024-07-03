@@ -68,6 +68,53 @@ func (_c *Browser_Exists_Call) RunAndReturn(run func(context.Context, string) bo
 	return _c
 }
 
+// Navigate provides a mock function with given fields: ctx, addr
+func (_m *Browser) Navigate(ctx context.Context, addr string) error {
+	ret := _m.Called(ctx, addr)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Navigate")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, addr)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Browser_Navigate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Navigate'
+type Browser_Navigate_Call struct {
+	*mock.Call
+}
+
+// Navigate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - addr string
+func (_e *Browser_Expecter) Navigate(ctx interface{}, addr interface{}) *Browser_Navigate_Call {
+	return &Browser_Navigate_Call{Call: _e.mock.On("Navigate", ctx, addr)}
+}
+
+func (_c *Browser_Navigate_Call) Run(run func(ctx context.Context, addr string)) *Browser_Navigate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *Browser_Navigate_Call) Return(_a0 error) *Browser_Navigate_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Browser_Navigate_Call) RunAndReturn(run func(context.Context, string) error) *Browser_Navigate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RefreshPage provides a mock function with given fields: ctx, content
 func (_m *Browser) RefreshPage(ctx context.Context, content *string) error {
 	ret := _m.Called(ctx, content)
@@ -167,6 +214,54 @@ func (_c *Browser_URL_Call) Return(_a0 string, _a1 error) *Browser_URL_Call {
 }
 
 func (_c *Browser_URL_Call) RunAndReturn(run func(context.Context) (string, error)) *Browser_URL_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteInput provides a mock function with given fields: ctx, selector, content
+func (_m *Browser) WriteInput(ctx context.Context, selector string, content string) error {
+	ret := _m.Called(ctx, selector, content)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteInput")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, selector, content)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Browser_WriteInput_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteInput'
+type Browser_WriteInput_Call struct {
+	*mock.Call
+}
+
+// WriteInput is a helper method to define mock.On call
+//   - ctx context.Context
+//   - selector string
+//   - content string
+func (_e *Browser_Expecter) WriteInput(ctx interface{}, selector interface{}, content interface{}) *Browser_WriteInput_Call {
+	return &Browser_WriteInput_Call{Call: _e.mock.On("WriteInput", ctx, selector, content)}
+}
+
+func (_c *Browser_WriteInput_Call) Run(run func(ctx context.Context, selector string, content string)) *Browser_WriteInput_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *Browser_WriteInput_Call) Return(_a0 error) *Browser_WriteInput_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Browser_WriteInput_Call) RunAndReturn(run func(context.Context, string, string) error) *Browser_WriteInput_Call {
 	_c.Call.Return(run)
 	return _c
 }

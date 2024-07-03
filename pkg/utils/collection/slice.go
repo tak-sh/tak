@@ -29,3 +29,13 @@ func AnyZero[T comparable](t []T) bool {
 		return e == zero
 	})
 }
+
+type CastFunc[F, T any] func(f F) T
+
+func Cast[F, T any](s []F, c CastFunc[F, T]) []T {
+	out := make([]T, 0, len(s))
+	for _, v := range s {
+		out = append(out, c(v))
+	}
+	return out
+}

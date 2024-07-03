@@ -1,6 +1,15 @@
 package engine
 
-import "time"
+import (
+	"errors"
+	"fmt"
+	"time"
+)
+
+var (
+	ErrRetryEval = errors.New("retry eval")
+	ErrSkip      = errors.New("skip eval")
+)
 
 type EventQueue chan Event
 
@@ -9,6 +18,7 @@ func NewEventQueue() EventQueue {
 }
 
 type Event interface {
+	fmt.Stringer
 	eventSigil()
 }
 
@@ -24,8 +34,10 @@ type PathNode interface {
 // Every Instruction should have their Eval method called via the Evaluator
 // rather than calling it directly.
 type Instruction interface {
+	fmt.Stringer
 	GetId() string
 	Eval(c *Context, to time.Duration) error
+	Cancel(err error)
 }
 
 var _ Event = &NextInstructionEvent{}
@@ -33,6 +45,11 @@ var _ Event = &NextInstructionEvent{}
 type NextInstructionEvent struct {
 	// The Instruction that is now running.
 	Instruction Instruction
+	Context     *Context
+}
+
+func (c *NextInstructionEvent) String() string {
+	return c.Instruction.String()
 }
 
 func (c *NextInstructionEvent) eventSigil() {}
@@ -41,46 +58,37 @@ func (c *NextInstructionEvent) eventSigil() {}
 // previously evaluated.
 type Evaluator interface {
 	Eval(c *Context, i Instruction) error
-	Prev() Instruction
 }
 
 func NewEvaluator(eq EventQueue, to time.Duration) Evaluator {
 	out := &evaluator{
-		Q:         eq,
-		Evaluated: make([]Instruction, 0),
-		Timeout:   to,
+		Q:       eq,
+		Timeout: to,
 	}
 
 	return out
 }
 
 type evaluator struct {
-	Q         EventQueue
-	Evaluated []Instruction
-	Timeout   time.Duration
+	Q       EventQueue
+	Timeout time.Duration
 }
 
-func (e *evaluator) Eval(c *Context, i Instruction) error {
+func (e *evaluator) Eval(c *Context, i Instruction) (err error) {
 	if e.Q != nil {
 		e.Q <- &NextInstructionEvent{
 			Instruction: i,
+			Context:     c,
 		}
 	}
 
-	err := i.Eval(c, e.Timeout)
-	if err != nil {
-		return err
+	for iter := 0; iter < 1 || errors.Is(err, ErrRetryEval); iter++ {
+		err = i.Eval(c, e.Timeout)
 	}
 
-	e.Evaluated = append(e.Evaluated, i)
-	return nil
-}
-
-func (e *evaluator) Prev() Instruction {
-	n := len(e.Evaluated)
-	if n > 0 {
-		return e.Evaluated[n-1]
+	if errors.Is(err, ErrSkip) {
+		err = nil
 	}
 
-	return nil
+	return
 }

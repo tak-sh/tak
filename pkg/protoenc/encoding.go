@@ -14,6 +14,10 @@ var (
 		Multiline: true,
 	}
 
+	ProtoMarshalPretty = &protojson.MarshalOptions{
+		Indent: "  ",
+	}
+
 	ProtoUnmarshal = &protojson.UnmarshalOptions{
 		AllowPartial:   true,
 		DiscardUnknown: true,

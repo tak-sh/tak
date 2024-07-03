@@ -6,17 +6,24 @@ import (
 	"fmt"
 	"github.com/eddieowens/opts"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
-	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/headless/step"
-	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
 type Stepper interface {
 	fmt.Stringer
+	// Next checks for either a step.ConditionalSignal or step.Step is ready, or a timeout
+	// (WithTimeout) occurs. These conditions are checked every tick duration (WithTickDuration).
 	Next(c *engine.Context) Handle
+
+	// Current retrieves the current Node.
+	Current() *Node
+
+	// Jump sets the current Node to be n.
+	Jump(n *Node)
 }
 
 type Opts struct {
@@ -45,44 +52,37 @@ func (o Opts) DefaultOptions() Opts {
 	}
 }
 
-func New(globalSignals []*step.ConditionalSignal, steps []*step.Step, o ...opts.Opt[Opts]) (Stepper, error) {
+func New(globalSignals []*step.ConditionalSignal, steps []*step.Step, o ...opts.Opt[Opts]) Stepper {
 	out := &stepper{
 		Op:      opts.DefaultApply(o...),
 		Signals: globalSignals,
-		Root:    &node{},
+		Root:    NewGraph(steps...),
 	}
 
-	if len(steps) == 0 {
-		return nil, except.NewInvalid("at least 1 step required")
-	}
+	out.Ticker = time.NewTicker(out.Op.Tick)
+	out.Curr = out.Root
 
-	idx := slices.IndexFunc(globalSignals, func(signal *step.ConditionalSignal) bool {
-		return signal.GetSignal() == v1beta1.ConditionalSignal_success
-	})
-	if idx < 0 {
-		return nil, except.NewInvalid("at least 1 success condition required")
-	}
+	return out
+}
 
-	n := out.Root
+func NewGraph(steps ...*step.Step) *Node {
+	root := &Node{}
+	n := root
 	for i := range steps {
 		v := steps[i]
-		child := &node{Val: v, Parent: n}
+		child := &Node{Val: v, Parent: n}
 		n.Children = append(n.Children, child)
 		if _, ok := v.CompiledAction.(step.Branches); !ok {
 			n = child
 		}
 	}
-
-	out.Current = out.Root
-
-	return out, nil
+	return root
 }
 
 type Handle interface {
 	fmt.Stringer
 
-	// Val returns the Step to be taken from the Stepper.
-	Val() *step.Step
+	Node() *Node
 
 	// Signal returns the applicable step.ConditionalSignal. If this is populated, the
 	// Stepper is considered terminated.
@@ -90,17 +90,28 @@ type Handle interface {
 
 	// Err returns an error if the step.ConditionalSignal holds an error signal.
 	Err() error
-
-	// Idx returns the index that the underlying Step held from the original Stepper.
-	// If this value isn't relevant, a value < 0 is returned.
-	Idx() int
 }
 
 type stepper struct {
 	Op      Opts
 	Signals []*step.ConditionalSignal
-	Root    *node
-	Current *node
+	Root    *Node
+	Curr    *Node
+	Ticker  *time.Ticker
+
+	currLock sync.RWMutex
+}
+
+func (s *stepper) Current() *Node {
+	s.currLock.RLock()
+	defer s.currLock.RUnlock()
+	return s.Curr
+}
+
+func (s *stepper) Jump(n *Node) {
+	s.Curr.Val.Cancel(engine.ErrSkip)
+	s.setCurr(n)
+	s.Ticker.Reset(s.Op.Tick)
 }
 
 func (s *stepper) String() string {
@@ -112,48 +123,78 @@ func (s *stepper) String() string {
 }
 
 func (s *stepper) Next(c *engine.Context) Handle {
-	ctx, cancel := context.WithTimeout(c.Context, s.Op.Timeout)
-	defer cancel()
-	ticker := time.NewTicker(s.Op.Tick)
-	defer ticker.Stop()
+	ctx := c.Context
+	if s.Op.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.Op.Timeout)
+		defer cancel()
+	}
+	c = c.WithContext(ctx)
 	for {
-		for _, v := range s.Signals {
-			if v.IsReady(c) {
-				if v.Signal == v1beta1.ConditionalSignal_error {
-					return &handle{Error: errors.New(v.GetMessage()), Sig: v}
-				}
-				return &handle{Sig: v}
-			}
-		}
-
-		for _, v := range s.Current.Children {
-			if v.Val.IsReady(c) {
-				s.Current = v
-				return &handle{Node: v}
-			}
+		h := FirstReady(c, s.Signals, s.getChildren())
+		if h != nil {
+			s.Curr = h.Node()
+			return h
 		}
 
 		// if we're waiting to decide, it may be that the page is stale.
 		_ = c.RefreshPageState()
 
 		select {
-		case <-ctx.Done():
-			return &handle{Error: context.Cause(ctx)}
-		case <-ticker.C:
+		case <-c.Done():
+			return NewErrHandle(context.Cause(ctx))
+		case <-s.Ticker.C:
 		}
 	}
 }
 
-var _ fmt.Stringer = &node{}
-
-type node struct {
-	Val      *step.Step
-	Idx      int
-	Children []*node
-	Parent   *node
+func (s *stepper) getChildren() []*Node {
+	s.currLock.RLock()
+	defer s.currLock.RUnlock()
+	return s.Curr.Children
 }
 
-func (n *node) String() string {
+func (s *stepper) setCurr(n *Node) {
+	s.currLock.Lock()
+	defer s.currLock.Unlock()
+	s.Curr = n
+}
+
+func FirstReady(c *engine.Context, signals []*step.ConditionalSignal, children []*Node) Handle {
+	for _, v := range signals {
+		if v.IsReady(c) {
+			return NewSignalHandle(v)
+		}
+	}
+
+	for _, v := range children {
+		if v.Val.IsReady(c) {
+			return NewNodeHandle(v)
+		}
+	}
+
+	return nil
+}
+
+var _ fmt.Stringer = &Node{}
+
+type Node struct {
+	Val      *step.Step
+	Idx      int
+	Children []*Node
+	Parent   *Node
+}
+
+// NavUp follows the Node.Parent until either the Parent is nil (root)
+// or it has navigated upwards n times.
+func NavUp(node *Node, n int) *Node {
+	for i := 0; i < n && node.Parent != nil; i++ {
+		node = node.Parent
+	}
+	return node
+}
+
+func (n *Node) String() string {
 	out := make([]string, 0, len(n.Children)+1)
 	if n.Val != nil && n.Val.CompiledAction != nil {
 		out = append(out, n.Val.CompiledAction.String())
@@ -170,15 +211,35 @@ func (n *node) String() string {
 	return strings.Join(out, " -> ")
 }
 
+func NewErrHandle(err error) Handle {
+	return &handle{Error: err}
+}
+
+func NewNodeHandle(n *Node) Handle {
+	return &handle{N: n}
+}
+
+func NewSignalHandle(s *step.ConditionalSignal) Handle {
+	if s.Signal == v1beta1.ConditionalSignal_error {
+		return &handle{Error: errors.New(s.GetMessage()), Sig: s}
+	}
+
+	return &handle{Sig: s}
+}
+
 type handle struct {
-	Node  *node
+	N     *Node
 	Sig   *step.ConditionalSignal
 	Error error
 }
 
+func (h *handle) Node() *Node {
+	return h.N
+}
+
 func (h *handle) String() string {
-	if h.Node != nil && h.Node.Val != nil {
-		return h.Node.Val.CompiledAction.String()
+	if h.N != nil && h.N.Val != nil {
+		return h.N.Val.CompiledAction.String()
 	}
 
 	if h.Sig != nil {
@@ -192,14 +253,6 @@ func (h *handle) String() string {
 	return ""
 }
 
-func (h *handle) Val() *step.Step {
-	if h.Node == nil {
-		return nil
-	}
-
-	return h.Node.Val
-}
-
 func (h *handle) Signal() *step.ConditionalSignal {
 	return h.Sig
 }
@@ -210,11 +263,4 @@ func (h *handle) Err() error {
 	}
 
 	return nil
-}
-
-func (h *handle) Idx() int {
-	if h.Node != nil {
-		return -1
-	}
-	return h.Node.Idx
 }

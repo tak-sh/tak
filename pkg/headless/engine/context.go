@@ -36,6 +36,8 @@ type Browser interface {
 	RefreshPage(ctx context.Context, content *string) error
 	URL(ctx context.Context) (string, error)
 	Exists(ctx context.Context, sel string) bool
+	Navigate(ctx context.Context, addr string) error
+	WriteInput(ctx context.Context, selector, content string) error
 }
 
 type ContextOpts struct {
@@ -48,7 +50,6 @@ func NewContext(parent context.Context, str renderer.Stream, eval Evaluator, o C
 	out := &Context{
 		Context: parent,
 		TemplateData: &TemplateData{
-			CurrentPage: goquery.NewDocumentFromNode(nil),
 			ScriptTemplateData: &v1beta1.ScriptTemplateData{
 				Step:    make(map[string]string),
 				Browser: &v1beta1.BrowserTemplateData{},
@@ -64,6 +65,24 @@ func NewContext(parent context.Context, str renderer.Stream, eval Evaluator, o C
 	return out, nil
 }
 
+func (c *Context) WithContext(ctx context.Context) *Context {
+	cp := c.Copy()
+	cp.Context = ctx
+	return cp
+}
+
+func (c *Context) Copy() *Context {
+	return &Context{
+		Context:          c.Context,
+		TemplateData:     c.TemplateData,
+		Stream:           c.Stream,
+		Evaluator:        c.Evaluator,
+		Browser:          c.Browser,
+		screenshotBuffer: c.screenshotBuffer,
+		opt:              c.opt,
+	}
+}
+
 func (c *Context) RefreshPageState() error {
 	err := c.Browser.RefreshPage(c.Context, &c.TemplateData.Browser.Content)
 	if err != nil {
@@ -71,11 +90,6 @@ func (c *Context) RefreshPageState() error {
 	}
 
 	c.TemplateData.Browser.Url, err = c.Browser.URL(c.Context)
-	if err != nil {
-		return err
-	}
-
-	c.TemplateData.CurrentPage, err = goquery.NewDocumentFromReader(strings.NewReader(c.TemplateData.Browser.Content))
 	if err != nil {
 		return err
 	}
@@ -175,7 +189,6 @@ func (t *TemplateRenderer) Render(d *TemplateData) string {
 
 type TemplateData struct {
 	*v1beta1.ScriptTemplateData
-	CurrentPage *goquery.Document
 }
 
 func (t *TemplateData) GetStepVal(id string) string {
@@ -204,7 +217,6 @@ func (t *TemplateData) Merge(m ...*TemplateData) *TemplateData {
 
 	return &TemplateData{
 		ScriptTemplateData: out,
-		CurrentPage:        goquery.NewDocumentFromNode(nil),
 	}
 }
 
@@ -309,6 +321,14 @@ func NewBrowser() Browser {
 }
 
 type browser struct {
+}
+
+func (p *browser) WriteInput(ctx context.Context, selector, content string) error {
+	return chromedp.SendKeys(selector, content).Do(ctx)
+}
+
+func (p *browser) Navigate(ctx context.Context, addr string) error {
+	return chromedp.Navigate(addr).Do(ctx)
 }
 
 func (p *browser) Exists(ctx context.Context, sel string) (exists bool) {

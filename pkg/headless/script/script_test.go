@@ -8,8 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chromedp/chromedp"
 	"github.com/stretchr/testify/suite"
-	accountv1beta1 "github.com/tak-sh/tak/generated/go/api/account/v1beta1"
-	metadatav1beta1 "github.com/tak-sh/tak/generated/go/api/metadata/v1beta1"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/headless/step"
@@ -18,8 +16,10 @@ import (
 	"github.com/tak-sh/tak/pkg/ui"
 	"github.com/tak-sh/tak/pkg/utils/ptr"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path"
 	"testing"
 	"time"
@@ -57,25 +57,35 @@ func (s *ScriptTestSuite) TestRun() {
 	r, w := io.Pipe()
 	str := renderer.NewStream()
 	eq := engine.NewEventQueue()
-	bubble := ui.NewBubbleUI(&accountv1beta1.Account{Metadata: &metadatav1beta1.Metadata{Name: "derp"}}, str, eq, ui.WithOnPrompt(func(id string) {
+	bubble := ui.NewScriptComponent("derp", str, eq, slog.Default())
+	bubble.OnRenderFunc = func(id string) {
 		if id == "selected" {
 			_, _ = w.Write([]byte(tea.KeyDown.String()))
 			_, _ = w.Write([]byte(tea.KeyDown.String()))
 			_, _ = w.Write([]byte(tea.KeyEnter.String()))
 		}
-	}))
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, _ = bubble.Start(ctx, r, bytes.NewBuffer(nil))
+	app := ui.NewApp(bubble)
+	p := tea.NewProgram(
+		app,
+		tea.WithContext(ctx),
+		tea.WithAltScreen(),
+		tea.WithInput(r),
+		tea.WithOutput(os.Stdout),
+	)
+
+	_, _ = ui.Run(ctx, p)
 	c, _ := engine.NewContext(ctx, str, engine.NewEvaluator(eq, 1*time.Second), engine.ContextOpts{})
 	comp, err := New(sc)
 	if !s.NoError(err) {
 		return
 	}
 
-	stper, _ := stepper.New(comp.Signals, comp.Steps)
+	stper := stepper.New(comp.Signals, comp.Steps)
 
 	doneCtx, err := Run(c, comp, stper, WithPostRunFunc(func(c *engine.Context, st *step.Step) error {
 		if st.GetId() == "input" {
@@ -119,7 +129,7 @@ func (s *ScriptTestSuite) TestRunNoSuccessCondition() {
 		return
 	}
 
-	stper, _ := stepper.New(comp.Signals, comp.Steps, stepper.WithTimeout(10*time.Millisecond), stepper.WithTickDuration(2*time.Millisecond))
+	stper := stepper.New(comp.Signals, comp.Steps, stepper.WithTimeout(10*time.Millisecond), stepper.WithTickDuration(2*time.Millisecond))
 	stepsRun := 0
 	doneCtx, err := Run(c, comp, stper, WithPostRunFunc(func(c *engine.Context, s *step.Step) error {
 		stepsRun++

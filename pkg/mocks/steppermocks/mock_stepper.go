@@ -22,6 +22,86 @@ func (_m *Stepper) EXPECT() *Stepper_Expecter {
 	return &Stepper_Expecter{mock: &_m.Mock}
 }
 
+// Current provides a mock function with given fields:
+func (_m *Stepper) Current() *stepper.Node {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Current")
+	}
+
+	var r0 *stepper.Node
+	if rf, ok := ret.Get(0).(func() *stepper.Node); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*stepper.Node)
+		}
+	}
+
+	return r0
+}
+
+// Stepper_Current_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Current'
+type Stepper_Current_Call struct {
+	*mock.Call
+}
+
+// Current is a helper method to define mock.On call
+func (_e *Stepper_Expecter) Current() *Stepper_Current_Call {
+	return &Stepper_Current_Call{Call: _e.mock.On("Current")}
+}
+
+func (_c *Stepper_Current_Call) Run(run func()) *Stepper_Current_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Stepper_Current_Call) Return(_a0 *stepper.Node) *Stepper_Current_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Stepper_Current_Call) RunAndReturn(run func() *stepper.Node) *Stepper_Current_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Jump provides a mock function with given fields: n
+func (_m *Stepper) Jump(n *stepper.Node) {
+	_m.Called(n)
+}
+
+// Stepper_Jump_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Jump'
+type Stepper_Jump_Call struct {
+	*mock.Call
+}
+
+// Jump is a helper method to define mock.On call
+//   - n *stepper.Node
+func (_e *Stepper_Expecter) Jump(n interface{}) *Stepper_Jump_Call {
+	return &Stepper_Jump_Call{Call: _e.mock.On("Jump", n)}
+}
+
+func (_c *Stepper_Jump_Call) Run(run func(n *stepper.Node)) *Stepper_Jump_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*stepper.Node))
+	})
+	return _c
+}
+
+func (_c *Stepper_Jump_Call) Return() *Stepper_Jump_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *Stepper_Jump_Call) RunAndReturn(run func(*stepper.Node)) *Stepper_Jump_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Next provides a mock function with given fields: c
 func (_m *Stepper) Next(c *engine.Context) stepper.Handle {
 	ret := _m.Called(c)

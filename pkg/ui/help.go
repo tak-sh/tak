@@ -8,28 +8,28 @@ import (
 	"strings"
 )
 
-func newHelpModel() *helpModel {
-	return &helpModel{
+func newHelpModel() *HelpModel {
+	return &HelpModel{
 		Help: help.New(),
 		Keys: keyregistry.DefaultKeys,
 	}
 }
 
-var _ tea.Model = &helpModel{}
+var _ tea.Model = &HelpModel{}
 
-type helpModel struct {
+type HelpModel struct {
 	Help help.Model
-	Keys *keyregistry.KeyMap
+	Keys help.KeyMap
 
 	width  int
 	height int
 }
 
-func (h *helpModel) Init() tea.Cmd {
+func (h *HelpModel) Init() tea.Cmd {
 	return nil
 }
 
-func (h *helpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (h *HelpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		h.Help.Width = msg.Width
@@ -37,9 +37,9 @@ func (h *helpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, h.Keys.Help):
+		case key.Matches(msg, keyregistry.DefaultKeys.Help):
 			h.Help.ShowAll = !h.Help.ShowAll
-		case key.Matches(msg, h.Keys.Quit):
+		case key.Matches(msg, keyregistry.DefaultKeys.Quit):
 			return h, tea.Quit
 		}
 	}
@@ -47,7 +47,7 @@ func (h *helpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return h, nil
 }
 
-func (h *helpModel) View() string {
+func (h *HelpModel) View() string {
 	helpView := h.Help.View(h.Keys)
 	height := 8 - strings.Count(helpView, "\n")
 

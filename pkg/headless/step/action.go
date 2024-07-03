@@ -43,16 +43,23 @@ func RunAction(c *engine.Context, act Action, to time.Duration) error {
 	case *PromptAction, *BranchAction:
 		return act.Act(c)
 	}
-	var toCancel context.CancelFunc
-	oldCtx := c.Context
-	c.Context, toCancel = context.WithTimeout(c.Context, to)
-	defer func() {
-		toCancel()
-		c.Context = oldCtx
-	}()
-	err := act.Act(c)
+	ctx := c.Context
+	if to > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(c.Context, to)
+		defer cancel()
+	}
+	err := act.Act(c.WithContext(ctx))
 	if errors.Is(err, context.DeadlineExceeded) {
 		return except.NewTimeout("took too long")
 	}
 	return err
+}
+
+func RunActionAsync(c *engine.Context, act Action, to time.Duration) <-chan error {
+	out := make(chan error, 1)
+	go func() {
+		out <- RunAction(c, act, to)
+	}()
+	return out
 }

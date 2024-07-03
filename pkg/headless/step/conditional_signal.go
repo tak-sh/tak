@@ -33,7 +33,7 @@ func NewConditionalSignal(s *v1beta1.ConditionalSignal) (*ConditionalSignal, err
 	var err error
 	out.Conditional, err = engine.CompileTemplate(s.GetIf())
 	if err != nil {
-		errors.Join(except.NewInvalid("signals 'if' field"), err)
+		return nil, errors.Join(except.NewInvalid("signals 'if' field"), err)
 	}
 
 	return out, nil
