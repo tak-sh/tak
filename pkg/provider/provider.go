@@ -1,10 +1,10 @@
-package account
+package provider
 
 import (
 	"context"
 	"errors"
 	"github.com/eddieowens/opts"
-	"github.com/tak-sh/tak/generated/go/api/account/v1beta1"
+	"github.com/tak-sh/tak/generated/go/api/provider/v1beta1"
 	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
@@ -18,9 +18,9 @@ import (
 	"path/filepath"
 )
 
-func New(acct *v1beta1.Account) (a *Account, err error) {
-	a = &Account{
-		Account: acct,
+func New(prov *v1beta1.Provider) (a *Provider, err error) {
+	a = &Provider{
+		Provider: prov,
 	}
 
 	a.Login, err = script.New(a.GetSpec().GetLogin())
@@ -64,16 +64,16 @@ func WithScriptOpts(o ...opts.Opt[script.RunOpts]) opts.Opt[RunOpts] {
 	}
 }
 
-var _ grpcutils.ProtoWrapper[*v1beta1.Account] = &Account{}
-var _ validate.Validator = &Account{}
+var _ grpcutils.ProtoWrapper[*v1beta1.Provider] = &Provider{}
+var _ validate.Validator = &Provider{}
 
-type Account struct {
-	*v1beta1.Account
+type Provider struct {
+	*v1beta1.Provider
 	Login                *script.Script
 	DownloadTransactions *script.Script
 }
 
-func (a *Account) Run(c *engine.Context, stepperFact stepper.Factory, o ...opts.Opt[RunOpts]) context.Context {
+func (p *Provider) Run(c *engine.Context, stepperFact stepper.Factory, o ...opts.Opt[RunOpts]) context.Context {
 	ctx, cancel := context.WithCancelCause(c.Context)
 	op := opts.DefaultApply(o...)
 
@@ -84,8 +84,8 @@ func (a *Account) Run(c *engine.Context, stepperFact stepper.Factory, o ...opts.
 		}()
 		logger := contexts.GetLogger(c.Context)
 		if !op.SkipLogin {
-			stper := stepperFact.NewStepper(a.Login.Signals, a.Login.Steps)
-			err = script.Run(c, a.Login, stper, op.ScriptOpts...)
+			stper := stepperFact.NewStepper(p.Login.Signals, p.Login.Steps)
+			err = script.Run(c, p.Login, stper, op.ScriptOpts...)
 			if err != nil {
 				logger.Error("Failed to run login script.", slog.String("err", err.Error()))
 				return
@@ -93,8 +93,8 @@ func (a *Account) Run(c *engine.Context, stepperFact stepper.Factory, o ...opts.
 		}
 
 		if !op.SkipDownloadTransactions {
-			stper := stepperFact.NewStepper(a.DownloadTransactions.Signals, a.DownloadTransactions.Steps)
-			err = script.Run(c, a.DownloadTransactions, stper, op.ScriptOpts...)
+			stper := stepperFact.NewStepper(p.DownloadTransactions.Signals, p.DownloadTransactions.Steps)
+			err = script.Run(c, p.DownloadTransactions, stper, op.ScriptOpts...)
 			if err != nil {
 				logger.Error("Failed to run download transactions script.", slog.String("err", err.Error()))
 				return
@@ -105,13 +105,13 @@ func (a *Account) Run(c *engine.Context, stepperFact stepper.Factory, o ...opts.
 	return ctx
 }
 
-func (a *Account) Validate() error {
-	err := a.Login.Validate()
+func (p *Provider) Validate() error {
+	err := p.Login.Validate()
 	if err != nil {
 		return errors.Join(errors.New("login script"), err)
 	}
 
-	err = a.DownloadTransactions.Validate()
+	err = p.DownloadTransactions.Validate()
 	if err != nil {
 		return errors.Join(errors.New("download transactions script"), err)
 	}
@@ -119,17 +119,17 @@ func (a *Account) Validate() error {
 	return nil
 }
 
-func (a *Account) ToProto() *v1beta1.Account {
-	return a.Account
+func (p *Provider) ToProto() *v1beta1.Provider {
+	return p.Provider
 }
 
-func LoadFile(fp string) (*v1beta1.Account, error) {
+func LoadFile(fp string) (*v1beta1.Provider, error) {
 	_, err := os.Stat(fp)
 	if err != nil {
 		return nil, errors.Join(except.NewNotFound("failed to find account file %s", fp), err)
 	}
 
-	acct := new(v1beta1.Account)
+	acct := new(v1beta1.Provider)
 	dir, name := filepath.Split(fp)
 	err = protoenc.UnmarshalFile(acct, name, os.DirFS(dir))
 	if err != nil {

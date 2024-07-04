@@ -5,13 +5,13 @@ import (
 	"errors"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chromedp/chromedp"
-	"github.com/tak-sh/tak/pkg/account"
 	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/debug"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/headless/script"
 	"github.com/tak-sh/tak/pkg/headless/step/stepper"
+	"github.com/tak-sh/tak/pkg/provider"
 	"github.com/tak-sh/tak/pkg/renderer"
 	"github.com/tak-sh/tak/pkg/settings"
 	"github.com/tak-sh/tak/pkg/ui"
@@ -98,12 +98,12 @@ func NewDebugAccountCommand() *cli.Command {
 			fp := cmd.Args().First()
 			logger := contexts.GetLogger(cmd.Context)
 
-			rawAcct, err := account.LoadFile(fp)
+			mani, err := provider.LoadFile(fp)
 			if err != nil {
 				return err
 			}
 
-			acct, err := account.New(rawAcct)
+			prov, err := provider.New(mani)
 			if err != nil {
 				return err
 			}
@@ -112,7 +112,7 @@ func NewDebugAccountCommand() *cli.Command {
 			eq := engine.NewEventQueue()
 			stpper := debug.NewFactory()
 
-			scriptComp := ui.NewScriptComponent(acct.GetMetadata().GetName(), str, eq, logger)
+			scriptComp := ui.NewScriptComponent(prov.GetMetadata().GetName(), str, eq, logger)
 			debugComp := ui.NewDebugComponent(stpper, scriptComp)
 			app := ui.NewApp(debugComp)
 			app.Help.Keys = keyregistry.DebugKeys
@@ -145,10 +145,10 @@ func NewDebugAccountCommand() *cli.Command {
 				chromeOpts = append(chromeOpts, chromedp.UserDataDir(cdd))
 			}
 
-			acctCtx := acct.Run(c, stpper,
-				account.WithSkipLogin(cmd.Bool("skip_login")),
-				account.WithSkipDownloadTransactions(cmd.Bool("skip_download")),
-				account.WithScriptOpts(
+			acctCtx := prov.Run(c, stpper,
+				provider.WithSkipLogin(cmd.Bool("skip_login")),
+				provider.WithSkipDownloadTransactions(cmd.Bool("skip_download")),
+				provider.WithScriptOpts(
 					script.WithChromeOpts(chromeOpts...),
 				),
 			)
@@ -198,12 +198,12 @@ func NewAccountSyncCommand() *cli.Command {
 			fp := cmd.Args().First()
 			logger := contexts.GetLogger(cmd.Context)
 
-			acctRaw, err := account.LoadFile(fp)
+			acctRaw, err := provider.LoadFile(fp)
 			if err != nil {
 				return err
 			}
 
-			acct, err := account.New(acctRaw)
+			acct, err := provider.New(acctRaw)
 			if err != nil {
 				return err
 			}
@@ -244,7 +244,7 @@ func NewAccountSyncCommand() *cli.Command {
 
 			stpper := stepper.NewFactory()
 			scriptCtx := acct.Run(c, stpper,
-				account.WithScriptOpts(
+				provider.WithScriptOpts(
 					script.WithScreenshotAfter(cmd.Bool("debug")),
 					script.WithChromeOpts(chromeOpts...),
 				),

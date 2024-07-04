@@ -3,7 +3,7 @@ package account
 import (
 	"github.com/stretchr/testify/suite"
 	"github.com/tak-sh/tak/generated/go/api/account/v1beta1"
-	"github.com/tak-sh/tak/pkg/account"
+	"github.com/tak-sh/tak/pkg/provider"
 	"github.com/tak-sh/tak/pkg/utils/fileutils"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +18,7 @@ type Suite struct {
 func (s *Suite) StartAccountTest(accountName, fileName string) (*TestRun, error) {
 	accountsPath := fileutils.FindUpwardFrom("accounts", "", "")
 	chasePath := filepath.Join(accountsPath, accountName)
-	acct, err := account.LoadFile(filepath.Join(chasePath, fileName))
+	acct, err := provider.LoadFile(filepath.Join(chasePath, fileName))
 	if err != nil {
 		return nil, err
 	}

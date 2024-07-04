@@ -1,13 +1,15 @@
 syntax = "proto3";
 
-package tak.sh.api.account.v1beta1;
+package tak.sh.api.provider.v1beta1;
 
-option go_package = "github.com/tak-sh/tak/generated/go/api/account/v1beta1";
+option go_package = "github.com/tak-sh/tak/generated/go/api/provider/v1beta1";
 
 import "api/script/v1beta1/script.proto";
 import "api/metadata/v1beta1/metadata.proto";
 
-message Account {
+// Provides the instructions necessary for a user to add an Account to
+// tak.
+message Provider {
   metadata.v1beta1.Metadata metadata = 1;
   Spec spec = 2;
 }
@@ -16,6 +18,6 @@ message Spec {
   // A script to handle the login flow for an account. This must take MFA into consideration
   // when writing.
   script.v1beta1.Script login = 1;
-  // A script to handle downloading a transactions file from the account.
+  // A script to handle downloading transactions file from the account.
   script.v1beta1.Script download_transactions = 2 [json_name = "download_transactions"];
 }
