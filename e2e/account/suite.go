@@ -2,7 +2,7 @@ package account
 
 import (
 	"github.com/stretchr/testify/suite"
-	"github.com/tak-sh/tak/generated/go/api/account/v1beta1"
+	"github.com/tak-sh/tak/generated/go/api/provider/v1beta1"
 	"github.com/tak-sh/tak/pkg/provider"
 	"github.com/tak-sh/tak/pkg/utils/fileutils"
 	"net/http"
@@ -32,7 +32,7 @@ func (s *Suite) StartAccountTest(accountName, fileName string) (*TestRun, error)
 }
 
 type TestRun struct {
-	Account *v1beta1.Account
+	Account *v1beta1.Provider
 	Server  *httptest.Server
 }
 
