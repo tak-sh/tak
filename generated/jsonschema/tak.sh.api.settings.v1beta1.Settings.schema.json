@@ -4,7 +4,7 @@
   "additionalProperties": false,
   "properties": {
     "chrome_data_directory": {
-      "description": "The root directory housing all user data. Defaults to ~/.tak/chrome_user_data.",
+      "description": "The root directory housing all user data. Defaults to ~/.tak/chrome_user_data.\n Accepts ~ to represent the user's home.",
       "type": "string"
     }
   },

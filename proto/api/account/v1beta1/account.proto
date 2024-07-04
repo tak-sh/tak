@@ -15,7 +15,7 @@ message Account {
 message Spec {
   // A script to handle the login flow for an account. This must take MFA into consideration
   // when writing.
-  script.v1beta1.Script login_script = 1 [json_name = "login_script"];
+  script.v1beta1.Script login = 1;
   // A script to handle downloading a transactions file from the account.
-  script.v1beta1.Script download_transactions_script = 2 [json_name = "download_transactions_script"];
+  script.v1beta1.Script download_transactions = 2 [json_name = "download_transactions"];
 }

@@ -2,7 +2,7 @@ metadata:
   name: chase
   version: v1beta1
 spec:
-  login_script:
+  login:
     signals:
       - if: |
           {{ browser.content|html_select:"mds-brand-bar[sign-in-out-button-text='Sign out']" }}

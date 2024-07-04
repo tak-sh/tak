@@ -26,6 +26,26 @@ type Stepper interface {
 	Jump(n *Node)
 }
 
+type Factory interface {
+	NewStepper(globalSignals []*step.ConditionalSignal, steps []*step.Step) Stepper
+}
+
+func NewFactory(o ...opts.Opt[Opts]) Factory {
+	out := &factory{
+		Opts: o,
+	}
+
+	return out
+}
+
+type factory struct {
+	Opts []opts.Opt[Opts]
+}
+
+func (f *factory) NewStepper(globalSignals []*step.ConditionalSignal, steps []*step.Step) Stepper {
+	return New(globalSignals, steps, f.Opts...)
+}
+
 type Opts struct {
 	// Timeout to decide a new path.
 	Timeout time.Duration

@@ -18,7 +18,7 @@ import (
 
 var _ tea.Model = &DebugComponent{}
 
-func NewDebugComponent(s debug.Stepper, sc *ScriptComponent) *DebugComponent {
+func NewDebugComponent(s debug.Controller, sc *ScriptComponent) *DebugComponent {
 	out := &DebugComponent{
 		SC:            sc,
 		Debug:         s,
@@ -31,7 +31,7 @@ func NewDebugComponent(s debug.Stepper, sc *ScriptComponent) *DebugComponent {
 
 type DebugComponent struct {
 	SC            *ScriptComponent
-	Debug         debug.Stepper
+	Debug         debug.Controller
 	DebugView     *DebugView
 	UpdateHistory *UpdateHistory
 }

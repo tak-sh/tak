@@ -1,13 +1,127 @@
 package account
 
 import (
+	"context"
 	"errors"
+	"github.com/eddieowens/opts"
 	"github.com/tak-sh/tak/generated/go/api/account/v1beta1"
+	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/except"
+	"github.com/tak-sh/tak/pkg/headless/engine"
+	"github.com/tak-sh/tak/pkg/headless/script"
+	"github.com/tak-sh/tak/pkg/headless/step/stepper"
 	"github.com/tak-sh/tak/pkg/protoenc"
+	"github.com/tak-sh/tak/pkg/utils/grpcutils"
+	"github.com/tak-sh/tak/pkg/validate"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
+
+func New(acct *v1beta1.Account) (a *Account, err error) {
+	a = &Account{
+		Account: acct,
+	}
+
+	a.Login, err = script.New(a.GetSpec().GetLogin())
+	if err != nil {
+		return nil, errors.Join(errors.New("login script"), err)
+	}
+
+	a.DownloadTransactions, err = script.New(a.GetSpec().GetDownloadTransactions())
+	if err != nil {
+		return nil, errors.Join(errors.New("download transactions script"), err)
+	}
+
+	return a, nil
+}
+
+type RunOpts struct {
+	ScriptOpts               []opts.Opt[script.RunOpts]
+	SkipLogin                bool
+	SkipDownloadTransactions bool
+}
+
+func (r RunOpts) DefaultOptions() RunOpts {
+	return RunOpts{}
+}
+
+func WithSkipLogin(b bool) opts.Opt[RunOpts] {
+	return func(r *RunOpts) {
+		r.SkipLogin = b
+	}
+}
+
+func WithSkipDownloadTransactions(b bool) opts.Opt[RunOpts] {
+	return func(r *RunOpts) {
+		r.SkipDownloadTransactions = b
+	}
+}
+
+func WithScriptOpts(o ...opts.Opt[script.RunOpts]) opts.Opt[RunOpts] {
+	return func(r *RunOpts) {
+		r.ScriptOpts = append(r.ScriptOpts, o...)
+	}
+}
+
+var _ grpcutils.ProtoWrapper[*v1beta1.Account] = &Account{}
+var _ validate.Validator = &Account{}
+
+type Account struct {
+	*v1beta1.Account
+	Login                *script.Script
+	DownloadTransactions *script.Script
+}
+
+func (a *Account) Run(c *engine.Context, stepperFact stepper.Factory, o ...opts.Opt[RunOpts]) context.Context {
+	ctx, cancel := context.WithCancelCause(c.Context)
+	op := opts.DefaultApply(o...)
+
+	go func() {
+		var err error
+		defer func() {
+			cancel(err)
+		}()
+		logger := contexts.GetLogger(c.Context)
+		if !op.SkipLogin {
+			stper := stepperFact.NewStepper(a.Login.Signals, a.Login.Steps)
+			err = script.Run(c, a.Login, stper, op.ScriptOpts...)
+			if err != nil {
+				logger.Error("Failed to run login script.", slog.String("err", err.Error()))
+				return
+			}
+		}
+
+		if !op.SkipDownloadTransactions {
+			stper := stepperFact.NewStepper(a.DownloadTransactions.Signals, a.DownloadTransactions.Steps)
+			err = script.Run(c, a.DownloadTransactions, stper, op.ScriptOpts...)
+			if err != nil {
+				logger.Error("Failed to run download transactions script.", slog.String("err", err.Error()))
+				return
+			}
+		}
+	}()
+
+	return ctx
+}
+
+func (a *Account) Validate() error {
+	err := a.Login.Validate()
+	if err != nil {
+		return errors.Join(errors.New("login script"), err)
+	}
+
+	err = a.DownloadTransactions.Validate()
+	if err != nil {
+		return errors.Join(errors.New("download transactions script"), err)
+	}
+
+	return nil
+}
+
+func (a *Account) ToProto() *v1beta1.Account {
+	return a.Account
+}
 
 func LoadFile(fp string) (*v1beta1.Account, error) {
 	_, err := os.Stat(fp)

@@ -32,16 +32,30 @@ var desktop = device.Info{
 }
 
 type RunOpts struct {
-	Store       *engine.TemplateData
-	PreRun      []chromedp.Action
-	PostRunFunc PostRunFunc
-	ChromeOpts  []chromedp.ExecAllocatorOption
+	Store            *engine.TemplateData
+	PreRun           []chromedp.Action
+	PostRunFunc      PostRunFunc
+	ScreenshotAfter  bool
+	ScreenshotBefore bool
+	ChromeOpts       []chromedp.ExecAllocatorOption
 }
 
 type PostRunFunc func(c *engine.Context, s *step.Step) error
 
 func (r RunOpts) DefaultOptions() RunOpts {
 	return RunOpts{}
+}
+
+func WithScreenshotBefore(b bool) opts.Opt[RunOpts] {
+	return func(r *RunOpts) {
+		r.ScreenshotBefore = b
+	}
+}
+
+func WithScreenshotAfter(b bool) opts.Opt[RunOpts] {
+	return func(r *RunOpts) {
+		r.ScreenshotAfter = b
+	}
 }
 
 func WithChromeOpts(o ...chromedp.ExecAllocatorOption) opts.Opt[RunOpts] {
@@ -56,8 +70,27 @@ func WithPostRunFunc(f PostRunFunc) opts.Opt[RunOpts] {
 	}
 }
 
-func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts]) (context.Context, error) {
+func RunAsync(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts]) context.Context {
 	ctx, cancel := context.WithCancelCause(c.Context)
+
+	go func() {
+		var err error
+		defer func() {
+			cancel(err)
+		}()
+		logger := contexts.GetLogger(c.Context)
+		err = Run(c, s, st, o...)
+		if err != nil {
+			logger.Error("Failed to run login script.", slog.String("err", err.Error()))
+			return
+		}
+	}()
+
+	return ctx
+}
+
+func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts]) error {
+	ctx := c.Context
 
 	op := opts.DefaultApply(o...)
 
@@ -99,7 +132,7 @@ func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts
 			logger.Info("Running action.", slog.String("action", v.Action.String()))
 
 			if handle.Node().Idx > 0 {
-				if s.ScreenShotBefore {
+				if op.ScreenshotBefore {
 					_, screenErr := c.Screenshot(c.Context, v.GetId())
 					if screenErr != nil {
 						logger.Error("Failed to take screenshot.", slog.String("id", v.GetId()), slog.String("err", screenErr.Error()))
@@ -113,7 +146,7 @@ func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts
 				logger.Error("Failed to run step.", slog.String("id", v.GetId()), slog.String("err", err.Error()))
 			}
 
-			if errored || s.ScreenShotAfter {
+			if errored || op.ScreenshotAfter {
 				fp, screenErr := c.Screenshot(c.Context, v.GetId())
 				if screenErr != nil {
 					logger.Error("Failed to take screenshot.", slog.String("id", v.GetId()), slog.String("err", screenErr.Error()))
@@ -137,20 +170,13 @@ func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts
 		return nil
 	}))
 
-	go func() {
-		var err error
-		defer func() {
-			canErr := chromedp.Cancel(chromeCtx)
-			if canErr != nil {
-				logger.Error("Failed to clean up context.", slog.String("err", err.Error()))
-			}
-			cancel(err)
-		}()
-		err = chromedp.Run(chromeCtx, acts...)
-		return
+	defer func() {
+		err := chromedp.Cancel(chromeCtx)
+		if err != nil {
+			logger.Error("Failed to clean up context.", slog.String("err", err.Error()))
+		}
 	}()
-
-	return ctx, nil
+	return chromedp.Run(chromeCtx, acts...)
 }
 
 func New(s *v1beta1.Script) (*Script, error) {
@@ -209,10 +235,8 @@ var _ grpcutils.ProtoWrapper[*v1beta1.Script] = &Script{}
 var _ validate.Validator = &Script{}
 
 type Script struct {
-	Steps            []*step.Step
-	Signals          []*step.ConditionalSignal
-	ScreenShotBefore bool
-	ScreenShotAfter  bool
+	Steps   []*step.Step
+	Signals []*step.ConditionalSignal
 
 	script *v1beta1.Script
 }

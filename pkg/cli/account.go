@@ -83,24 +83,34 @@ func NewDebugAccountCommand() *cli.Command {
 		Args:        true,
 		ArgsUsage:   "The path to an account file.",
 		Description: "Run and test every step of a new account in an interactive terminal window.",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "skip_login",
+				Usage: "Skip the login step for the account provider.",
+			},
+			&cli.BoolFlag{
+				Name:  "skip_download",
+				Usage: "Skip the download transactions step for the account provider.",
+			},
+		},
 		Action: func(cmd *cli.Context) error {
 			ss := cmd.String("screenshots")
 			fp := cmd.Args().First()
 			logger := contexts.GetLogger(cmd.Context)
 
-			acct, err := account.LoadFile(fp)
+			rawAcct, err := account.LoadFile(fp)
 			if err != nil {
 				return err
 			}
 
-			s, err := script.New(acct.GetSpec().GetLoginScript())
+			acct, err := account.New(rawAcct)
 			if err != nil {
-				return errors.Join(except.NewInvalid("failed to compile your login script"), err)
+				return err
 			}
 
 			str := renderer.NewStream()
 			eq := engine.NewEventQueue()
-			stpper := debug.NewStepper(s.Signals, s.Steps)
+			stpper := debug.NewFactory()
 
 			scriptComp := ui.NewScriptComponent(acct.GetMetadata().GetName(), str, eq, logger)
 			debugComp := ui.NewDebugComponent(stpper, scriptComp)
@@ -135,18 +145,19 @@ func NewDebugAccountCommand() *cli.Command {
 				chromeOpts = append(chromeOpts, chromedp.UserDataDir(cdd))
 			}
 
-			scriptCtx, err := script.Run(c, s, stpper,
-				script.WithChromeOpts(chromeOpts...),
+			acctCtx := acct.Run(c, stpper,
+				account.WithSkipLogin(cmd.Bool("skip_login")),
+				account.WithSkipDownloadTransactions(cmd.Bool("skip_download")),
+				account.WithScriptOpts(
+					script.WithChromeOpts(chromeOpts...),
+				),
 			)
-			if err != nil {
-				return err
-			}
 
 			select {
 			case <-uiCtx.Done():
 				return context.Cause(uiCtx)
-			case <-scriptCtx.Done():
-				return context.Cause(scriptCtx)
+			case <-acctCtx.Done():
+				return context.Cause(acctCtx)
 			}
 		},
 	}
@@ -187,22 +198,20 @@ func NewAccountSyncCommand() *cli.Command {
 			fp := cmd.Args().First()
 			logger := contexts.GetLogger(cmd.Context)
 
-			acct, err := account.LoadFile(fp)
+			acctRaw, err := account.LoadFile(fp)
 			if err != nil {
 				return err
 			}
 
-			s, err := script.New(acct.GetSpec().GetLoginScript())
+			acct, err := account.New(acctRaw)
 			if err != nil {
-				return errors.Join(except.NewInvalid("failed to compile your login script"), err)
+				return err
 			}
-
-			s.ScreenShotAfter = cmd.Bool("debug")
 
 			str := renderer.NewStream()
 			eq := engine.NewEventQueue()
 
-			bubble := ui.NewScriptComponent(acct.GetMetadata().GetName(), str, eq, logger)
+			bubble := ui.NewScriptComponent(acctRaw.GetMetadata().GetName(), str, eq, logger)
 			app := ui.NewApp(bubble)
 			p := tea.NewProgram(
 				app,
@@ -233,13 +242,13 @@ func NewAccountSyncCommand() *cli.Command {
 				chromeOpts = append(chromeOpts, chromedp.UserDataDir(cdd))
 			}
 
-			scriptCtx, err := script.Run(c, s, stepper.New(s.Signals, s.Steps),
-				script.WithChromeOpts(chromeOpts...),
+			stpper := stepper.NewFactory()
+			scriptCtx := acct.Run(c, stpper,
+				account.WithScriptOpts(
+					script.WithScreenshotAfter(cmd.Bool("debug")),
+					script.WithChromeOpts(chromeOpts...),
+				),
 			)
-			if err != nil {
-				return err
-			}
-
 			select {
 			case <-uiCtx.Done():
 				return context.Cause(uiCtx)

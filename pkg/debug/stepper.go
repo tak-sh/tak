@@ -10,8 +10,12 @@ import (
 	"github.com/tak-sh/tak/pkg/headless/step/stepper"
 )
 
-type Stepper interface {
+type ControlStepper interface {
+	Controller
 	stepper.Stepper
+}
+
+type Controller interface {
 	Replay()
 	PreviousStep()
 
@@ -20,9 +24,20 @@ type Stepper interface {
 	Step()
 }
 
-func NewStepper(signals []*step.ConditionalSignal, steps []*step.Step, o ...opts.Opt[stepper.Opts]) Stepper {
-	out := &debugStepper{
-		Stepper:   stepper.New(signals, steps, o...),
+type ControllerFactory interface {
+	Controller
+	stepper.Factory
+}
+
+func NewStepper(signals []*step.ConditionalSignal, steps []*step.Step, o ...opts.Opt[stepper.Opts]) ControlStepper {
+	out := newController()
+	out.Stepper = stepper.New(signals, steps, o...)
+
+	return out
+}
+
+func newController() *controller {
+	out := &controller{
 		History:   linkedliststack.New[*HandleEntry](),
 		readyChan: make(chan struct{}, 1),
 	}
@@ -30,9 +45,40 @@ func NewStepper(signals []*step.ConditionalSignal, steps []*step.Step, o ...opts
 	return out
 }
 
-var _ stepper.Stepper = &debugStepper{}
+func NewFactory(o ...opts.Opt[stepper.Opts]) ControllerFactory {
+	out := &factory{
+		Opts:       o,
+		Controller: newController(),
+	}
 
-type debugStepper struct {
+	return out
+}
+
+type factory struct {
+	Opts       []opts.Opt[stepper.Opts]
+	Controller *controller
+}
+
+func (f *factory) Replay() {
+	f.Controller.Replay()
+}
+
+func (f *factory) PreviousStep() {
+	f.Controller.PreviousStep()
+}
+
+func (f *factory) Step() {
+	f.Controller.Step()
+}
+
+func (f *factory) NewStepper(globalSignals []*step.ConditionalSignal, steps []*step.Step) stepper.Stepper {
+	f.Controller.Stepper = stepper.New(globalSignals, steps, f.Opts...)
+	return f.Controller
+}
+
+var _ stepper.Stepper = &controller{}
+
+type controller struct {
 	stepper.Stepper
 	History stacks.Stack[*HandleEntry]
 
@@ -40,22 +86,25 @@ type debugStepper struct {
 	readyChan chan struct{}
 }
 
-func (s *debugStepper) Step() {
-	if len(s.readyChan) == 0 {
+func (s *controller) Step() {
+	if len(s.readyChan) == 0 && s.Stepper != nil {
 		s.Stepper.Current().Val.Cancel(engine.ErrSkip)
 		s.readyChan <- struct{}{}
 	}
 }
 
-func (s *debugStepper) Replay() {
+func (s *controller) Replay() {
 	s.jump(1)
 }
 
-func (s *debugStepper) PreviousStep() {
+func (s *controller) PreviousStep() {
 	s.jump(2)
 }
 
-func (s *debugStepper) jump(lvls int) {
+func (s *controller) jump(lvls int) {
+	if s.Stepper == nil {
+		return
+	}
 	h, _ := s.History.Pop()
 	if h != nil && h.Handle.Node() != nil {
 		s.Stepper.Jump(stepper.NavUp(h.Handle.Node(), lvls))
@@ -63,11 +112,11 @@ func (s *debugStepper) jump(lvls int) {
 	s.Step()
 }
 
-func (s *debugStepper) String() string {
+func (s *controller) String() string {
 	return s.Stepper.String()
 }
 
-func (s *debugStepper) Next(c *engine.Context) stepper.Handle {
+func (s *controller) Next(c *engine.Context) stepper.Handle {
 	for {
 		select {
 		case <-c.Done():

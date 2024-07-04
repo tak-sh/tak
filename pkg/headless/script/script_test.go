@@ -87,7 +87,7 @@ func (s *ScriptTestSuite) TestRun() {
 
 	stper := stepper.New(comp.Signals, comp.Steps)
 
-	doneCtx, err := Run(c, comp, stper, WithPostRunFunc(func(c *engine.Context, st *step.Step) error {
+	doneCtx := RunAsync(c, comp, stper, WithPostRunFunc(func(c *engine.Context, st *step.Step) error {
 		if st.GetId() == "input" {
 			var val string
 			_ = chromedp.Evaluate(`document.getElementById("test_input1").value`, &val).Do(c.Context)
@@ -95,9 +95,6 @@ func (s *ScriptTestSuite) TestRun() {
 		}
 		return nil
 	}))
-	if !s.NoError(err) {
-		return
-	}
 
 	<-doneCtx.Done()
 
@@ -131,13 +128,10 @@ func (s *ScriptTestSuite) TestRunNoSuccessCondition() {
 
 	stper := stepper.New(comp.Signals, comp.Steps, stepper.WithTimeout(10*time.Millisecond), stepper.WithTickDuration(2*time.Millisecond))
 	stepsRun := 0
-	doneCtx, err := Run(c, comp, stper, WithPostRunFunc(func(c *engine.Context, s *step.Step) error {
+	doneCtx := RunAsync(c, comp, stper, WithPostRunFunc(func(c *engine.Context, s *step.Step) error {
 		stepsRun++
 		return nil
 	}))
-	if !s.NoError(err) {
-		return
-	}
 
 	<-doneCtx.Done()
 

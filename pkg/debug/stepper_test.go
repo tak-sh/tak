@@ -26,7 +26,7 @@ func (s *StepperTestSuite) TestNextAndStep() {
 		{Conditional: success, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}},
 	}, []*step.Step{
 		s1,
-	}).(*debugStepper)
+	}).(*controller)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
 	time.AfterFunc(3*time.Millisecond, func() {
@@ -47,7 +47,7 @@ func (s *StepperTestSuite) TestNextAndStep() {
 func (s *StepperTestSuite) TestNextDeadline() {
 	// -- Given
 	//
-	st := NewStepper(nil, nil).(*debugStepper)
+	st := NewStepper(nil, nil).(*controller)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
 	defer cancel()
 	c := &engine.Context{Context: ctx}
@@ -68,7 +68,7 @@ func (s *StepperTestSuite) TestReplay() {
 	success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
 	st := NewStepper([]*step.ConditionalSignal{
 		{Conditional: success, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}},
-	}, []*step.Step{s1}, stepper.WithTickDuration(5*time.Millisecond), stepper.WithTimeout(50*time.Millisecond)).(*debugStepper)
+	}, []*step.Step{s1}, stepper.WithTickDuration(5*time.Millisecond), stepper.WithTimeout(50*time.Millisecond)).(*controller)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -100,7 +100,7 @@ func (s *StepperTestSuite) TestPreviousStep() {
 	success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
 	st := NewStepper([]*step.ConditionalSignal{
 		{Conditional: success, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}},
-	}, []*step.Step{s1, s2, s3}, stepper.WithTickDuration(5*time.Millisecond), stepper.WithTimeout(50*time.Millisecond)).(*debugStepper)
+	}, []*step.Step{s1, s2, s3}, stepper.WithTickDuration(5*time.Millisecond), stepper.WithTimeout(50*time.Millisecond)).(*controller)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -134,7 +134,7 @@ func (s *StepperTestSuite) TestPreviousStepAtRoot() {
 	success, _ := engine.CompileTemplate("{{browser.url == 'derp.com'}}")
 	st := NewStepper([]*step.ConditionalSignal{
 		{Conditional: success, ConditionalSignal: &v1beta1.ConditionalSignal{Signal: v1beta1.ConditionalSignal_success}},
-	}, []*step.Step{s1}, stepper.WithTickDuration(5*time.Millisecond), stepper.WithTimeout(50*time.Millisecond)).(*debugStepper)
+	}, []*step.Step{s1}, stepper.WithTickDuration(5*time.Millisecond), stepper.WithTimeout(50*time.Millisecond)).(*controller)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()

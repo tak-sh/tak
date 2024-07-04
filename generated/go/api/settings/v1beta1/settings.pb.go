@@ -26,6 +26,7 @@ type Settings struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The root directory housing all user data. Defaults to ~/.tak/chrome_user_data.
+	// Accepts ~ to represent the user's home.
 	ChromeDataDirectory *string `protobuf:"bytes,1,opt,name=chrome_data_directory,json=chromeDataDirectory,proto3,oneof" json:"chrome_data_directory,omitempty"`
 }
 

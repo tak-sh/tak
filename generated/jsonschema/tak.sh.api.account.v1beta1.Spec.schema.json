@@ -3,11 +3,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
-    "download_transactions_script": {
+    "download_transactions": {
       "$ref": "tak.sh.api.script.v1beta1.Script.schema.json",
       "description": "A script to handle downloading a transactions file from the account."
     },
-    "login_script": {
+    "login": {
       "$ref": "tak.sh.api.script.v1beta1.Script.schema.json",
       "description": "A script to handle the login flow for an account. This must take MFA into consideration\n when writing."
     }
