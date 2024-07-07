@@ -180,7 +180,7 @@ func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts
 }
 
 func New(s *v1beta1.Script) (*Script, error) {
-	if len(s.Steps) == 0 {
+	if len(s.GetSteps()) == 0 {
 		return nil, except.NewInvalid("at least 1 step required")
 	}
 

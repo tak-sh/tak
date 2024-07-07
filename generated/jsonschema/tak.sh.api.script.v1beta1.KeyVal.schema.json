@@ -1,15 +1,15 @@
 {
-  "$id": "tak.sh.api.script.v1beta1.Redaction.RegexRedaction.schema.json",
+  "$id": "tak.sh.api.script.v1beta1.KeyVal.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
-    "find": {
+    "key": {
       "type": "string"
     },
-    "replace": {
+    "value": {
       "type": "string"
     }
   },
-  "title": "Regex Redaction",
+  "title": "Key Val",
   "type": "object"
 }

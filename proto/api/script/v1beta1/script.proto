@@ -68,6 +68,11 @@ message Action {
     repeated Step steps = 2;
   }
 
+  // Store arbitrary values into the `step.[id]` field.
+  message Store {
+    repeated KeyVal key_vals = 1 [json_name = "key_vals"];
+  }
+
   // Click on an element.
   optional MouseClick mouse_click = 1 [json_name = "mouse_click"];
 
@@ -80,6 +85,8 @@ message Action {
   optional Nav nav = 4;
 
   optional Branch branch = 5;
+
+  optional Store store = 6;
 }
 
 message Prompt {
@@ -123,6 +130,8 @@ message Component {
 
     message FromSpec {
       EachSelector selector = 1;
+      // Iterates through every element of the EachSelector and maps each
+      // element via template expressions.
       Option mapper = 2;
     }
 
@@ -155,6 +164,11 @@ message Component {
 message Value {
   optional string str = 1;
   repeated string str_list = 2 [json_name = "str_list"];
+}
+
+message KeyVal {
+  string key = 1;
+  string value = 2;
 }
 
 // Selects specific fields for each element of a matching query. This functions like the each function
@@ -202,6 +216,10 @@ message ScriptTemplateData {
   // If within the context of a Dropdown component, e.g. when evaluating the if condition,
   // this field will be made available.
   Component.Dropdown.Option option = 4;
+
+  // If within the context of a for_each statement, this field will be populated with
+  // the current element within the collection that is being iterated upon.
+  map<string, string> each = 5;
 }
 
 // Signals that something has happened based on if a condition returns a truthy

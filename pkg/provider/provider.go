@@ -18,17 +18,17 @@ import (
 	"path/filepath"
 )
 
-func New(prov *v1beta1.Provider) (a *Provider, err error) {
-	a = &Provider{
-		Provider: prov,
+func New(prov *v1beta1.Manifest) (a *Manifest, err error) {
+	a = &Manifest{
+		Manifest: prov,
 	}
 
-	a.Login, err = script.New(a.GetSpec().GetLogin())
+	a.Login, err = script.New(a.GetSpec().GetLogin().GetScript())
 	if err != nil {
 		return nil, errors.Join(errors.New("login script"), err)
 	}
 
-	a.DownloadTransactions, err = script.New(a.GetSpec().GetDownloadTransactions())
+	a.DownloadTransactions, err = script.New(a.GetSpec().GetDownloadTransactions().GetScript())
 	if err != nil {
 		return nil, errors.Join(errors.New("download transactions script"), err)
 	}
@@ -64,16 +64,16 @@ func WithScriptOpts(o ...opts.Opt[script.RunOpts]) opts.Opt[RunOpts] {
 	}
 }
 
-var _ grpcutils.ProtoWrapper[*v1beta1.Provider] = &Provider{}
-var _ validate.Validator = &Provider{}
+var _ grpcutils.ProtoWrapper[*v1beta1.Manifest] = &Manifest{}
+var _ validate.Validator = &Manifest{}
 
-type Provider struct {
-	*v1beta1.Provider
+type Manifest struct {
+	*v1beta1.Manifest
 	Login                *script.Script
 	DownloadTransactions *script.Script
 }
 
-func (p *Provider) Run(c *engine.Context, stepperFact stepper.Factory, o ...opts.Opt[RunOpts]) context.Context {
+func (p *Manifest) Run(c *engine.Context, stepperFact stepper.Factory, o ...opts.Opt[RunOpts]) context.Context {
 	ctx, cancel := context.WithCancelCause(c.Context)
 	op := opts.DefaultApply(o...)
 
@@ -105,7 +105,7 @@ func (p *Provider) Run(c *engine.Context, stepperFact stepper.Factory, o ...opts
 	return ctx
 }
 
-func (p *Provider) Validate() error {
+func (p *Manifest) Validate() error {
 	err := p.Login.Validate()
 	if err != nil {
 		return errors.Join(errors.New("login script"), err)
@@ -119,17 +119,17 @@ func (p *Provider) Validate() error {
 	return nil
 }
 
-func (p *Provider) ToProto() *v1beta1.Provider {
-	return p.Provider
+func (p *Manifest) ToProto() *v1beta1.Manifest {
+	return p.Manifest
 }
 
-func LoadFile(fp string) (*v1beta1.Provider, error) {
+func LoadFile(fp string) (*v1beta1.Manifest, error) {
 	_, err := os.Stat(fp)
 	if err != nil {
 		return nil, errors.Join(except.NewNotFound("failed to find account file %s", fp), err)
 	}
 
-	acct := new(v1beta1.Provider)
+	acct := new(v1beta1.Manifest)
 	dir, name := filepath.Split(fp)
 	err = protoenc.UnmarshalFile(acct, name, os.DirFS(dir))
 	if err != nil {

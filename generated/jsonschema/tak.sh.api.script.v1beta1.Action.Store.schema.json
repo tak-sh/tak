@@ -1,0 +1,16 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Action.Store.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Store arbitrary values into the `step.[id]` field.",
+  "properties": {
+    "key_vals": {
+      "items": {
+        "$ref": "tak.sh.api.script.v1beta1.KeyVal.schema.json"
+      },
+      "type": "array"
+    }
+  },
+  "title": "Store",
+  "type": "object"
+}

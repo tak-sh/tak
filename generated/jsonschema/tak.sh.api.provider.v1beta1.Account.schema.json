@@ -1,24 +1,20 @@
 {
-  "$id": "tak.sh.api.script.v1beta1.StateCondition.schema.json",
+  "$id": "tak.sh.api.provider.v1beta1.Account.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "A conditional that sets the state of the Script.",
   "properties": {
-    "if": {
+    "name": {
       "type": "string"
     },
-    "message": {
-      "type": "string"
-    },
-    "state": {
+    "type": {
       "anyOf": [
         {
           "enum": [
             "unknown",
-            "success",
-            "error"
+            "bank",
+            "credit_card"
           ],
-          "title": "State",
+          "title": "Enum",
           "type": "string"
         },
         {
@@ -26,10 +22,9 @@
           "minimum": -2147483648,
           "type": "integer"
         }
-      ],
-      "description": "The state that will be triggered if the condition is met."
+      ]
     }
   },
-  "title": "State Condition",
+  "title": "Account",
   "type": "object"
 }

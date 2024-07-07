@@ -20,6 +20,9 @@
     },
     "nav": {
       "$ref": "tak.sh.api.script.v1beta1.Action.Nav.schema.json"
+    },
+    "store": {
+      "$ref": "tak.sh.api.script.v1beta1.Action.Store.schema.json"
     }
   },
   "title": "Action",

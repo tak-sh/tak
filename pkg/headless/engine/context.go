@@ -13,6 +13,7 @@ import (
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/renderer"
+	"github.com/tak-sh/tak/pkg/utils/collection"
 	"golang.org/x/net/html"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -191,6 +192,21 @@ type TemplateData struct {
 	*v1beta1.ScriptTemplateData
 }
 
+func (t *TemplateData) ForEach(key string, f func(r *TemplateData)) {
+	kp := strings.Split(key, ".")
+	fe := map[string]string{}
+	for k, v := range t.Step {
+		spl := strings.Split(k, ".")
+		if field, matched := collection.Rel(kp, spl); matched {
+			fe[strings.Join(field, ".")] = v
+		}
+	}
+
+	cl := t.Merge()
+	cl.Each = fe
+	f(cl)
+}
+
 func (t *TemplateData) GetStepVal(id string) string {
 	if t.GetStep() == nil {
 		return ""
@@ -251,6 +267,16 @@ func JSONVal(o any) pongo2.Context {
 	m := map[string]any{}
 	_ = json.Unmarshal(b, &m)
 	return m
+}
+
+func MergeTemplateContexts(c ...pongo2.Context) pongo2.Context {
+	out := pongo2.Context{}
+	for _, v := range c {
+		for k, val := range v {
+			out[k] = val
+		}
+	}
+	return out
 }
 
 func IsTruthy(a any) bool {

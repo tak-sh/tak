@@ -4,7 +4,8 @@
   "additionalProperties": false,
   "properties": {
     "mapper": {
-      "$ref": "tak.sh.api.script.v1beta1.Component.Dropdown.Option.schema.json"
+      "$ref": "tak.sh.api.script.v1beta1.Component.Dropdown.Option.schema.json",
+      "description": "Iterates through every element of the EachSelector and maps each\n element via template expressions."
     },
     "selector": {
       "$ref": "tak.sh.api.script.v1beta1.EachSelector.schema.json"

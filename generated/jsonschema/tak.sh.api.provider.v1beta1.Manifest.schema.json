@@ -1,15 +1,16 @@
 {
-  "$id": "tak.sh.api.account.v1beta1.Provider.schema.json",
+  "$id": "tak.sh.api.provider.v1beta1.Manifest.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
+  "description": "Provides the instructions necessary for a user to add an Institution to\n tak.",
   "properties": {
     "metadata": {
       "$ref": "tak.sh.api.metadata.v1beta1.Metadata.schema.json"
     },
     "spec": {
-      "$ref": "tak.sh.api.account.v1beta1.Spec.schema.json"
+      "$ref": "tak.sh.api.provider.v1beta1.Spec.schema.json"
     }
   },
-  "title": "Provider",
+  "title": "Manifest",
   "type": "object"
 }

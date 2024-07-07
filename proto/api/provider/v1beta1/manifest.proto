@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package tak.sh.api.provider.v1beta1;
+
+option go_package = "github.com/tak-sh/tak/generated/go/api/provider/v1beta1";
+
+import "api/script/v1beta1/script.proto";
+import "api/metadata/v1beta1/metadata.proto";
+import "api/provider/v1beta1/provider.proto";
+
+
+// Provides the instructions necessary for a user to add an Institution to
+// tak.
+message Manifest {
+  metadata.v1beta1.Metadata metadata = 1;
+  Spec spec = 2;
+}
+
+message Spec {
+  // A script to handle the login flow for an account. This must take MFA into consideration
+  // when writing.
+  LoginSpec login = 1;
+
+  // A script to handle downloading transactions file from the account.
+  DownloadTransactionsSpec download_transactions = 2 [json_name = "download_transactions"];
+
+  ListAccountsSpec list_accounts = 3 [json_name = "list_accounts"];
+}
+
+message LoginSpec {
+  script.v1beta1.Script script = 1;
+}
+
+message DownloadTransactionsSpec {
+  script.v1beta1.Script script = 1;
+}
+
+message ListAccountsSpec {
+  message OutputsSchemaMapping {
+    Account account = 1;
+    // Iterate through all fields of the key. These values will be made
+    // available to the account field via the `each.key` and `each.value`
+    // fields.
+    string for_each = 2 [json_name = "for_each"];
+  }
+
+  script.v1beta1.Script script = 1;
+  OutputsSchemaMapping outputs = 2;
+}

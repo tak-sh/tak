@@ -1,0 +1,16 @@
+{
+  "$id": "tak.sh.api.provider.v1beta1.ListAccountsSpec.OutputsSchemaMapping.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "account": {
+      "$ref": "tak.sh.api.provider.v1beta1.Account.schema.json"
+    },
+    "for_each": {
+      "description": "Iterate through all fields of the key. These values will be made\n available to the account field via the `each.key` and `each.value`\n fields.",
+      "type": "string"
+    }
+  },
+  "title": "Outputs Schema Mapping",
+  "type": "object"
+}

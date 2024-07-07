@@ -1,0 +1,15 @@
+{
+  "$id": "tak.sh.api.provider.v1beta1.ListAccountsSpec.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "outputs": {
+      "$ref": "tak.sh.api.provider.v1beta1.ListAccountsSpec.OutputsSchemaMapping.schema.json"
+    },
+    "script": {
+      "$ref": "tak.sh.api.script.v1beta1.Script.schema.json"
+    }
+  },
+  "title": "List Accounts Spec",
+  "type": "object"
+}

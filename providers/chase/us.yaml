@@ -2,137 +2,145 @@ metadata:
   name: chase
   version: v1beta1
 spec:
+  list_accounts:
+    script:
+      signals:
+        -
+    outputs:
+      account:
+        type: "{{ each.type }}"
   login:
-    signals:
-      - if: |
-          {{ browser.content|html_select:"mds-brand-bar[sign-in-out-button-text='Sign out']" }}
-        message: Login successful
-        signal: success
-    steps:
-      - action:
-          nav:
-            addr: https://www.chase.com/
-      - id: username
-        action:
-          ask:
-            prompt:
-              title: Username
-              component:
-                input:
-                  type: PASSWORD
-      - id: password
-        action:
-          ask:
-            prompt:
-              title: Password
-              component:
-                input:
-                  type: PASSWORD
-      - action:
-          input:
-            selector: "#userId-text-input-field"
-            value: "{{ step.username }}"
-      - action:
-          input:
-            selector: "#password-text-input-field"
-            value: "{{ step.password }}"
-      - action:
-          mouse_click:
-            selector: "#signin-button"
-      - id: mfa-select
-        action:
-          branch:
-            if: |
-              {{"Let's make sure it's you" in browser.content}}
-            steps:
-              - id: selected
-                action:
-                  ask:
-                    prompt:
-                      title: Select MFA method
-                      component:
-                        dropdown:
-                          from:
-                            selector:
-                              list_selector: "ul[id='mds-list__list-items']"
-                              iterator: "span[id*='list-item__input-label-optionsList-1']"
-                            mapper:
-                              value: "{{ element.attrs.id.val }}"
-                              text: "{{ element.data }}"
-              - action:
-                  mouse_click:
-                    selector: "span[id='{{ step.mfa-select.selected }}']"
-              - action:
-                  mouse_click:
-                    selector: "button[class='button button--primary']"
-              - id: otp
-                action:
-                  ask:
-                    prompt:
-                      title: Enter your OTP code
-                      component:
-                        input:
-                          type: PASSWORD
-              - action:
+    script:
+      signals:
+        - if: |
+            {{ browser.content|html_select:"mds-brand-bar[sign-in-out-button-text='Sign out']" }}
+          message: Login successful
+          signal: success
+      steps:
+        - action:
+            nav:
+              addr: https://www.chase.com/
+        - id: username
+          action:
+            ask:
+              prompt:
+                title: Username
+                component:
                   input:
-                    selector: "input[id='otpInput-input']"
-                    value: "{{ step.mfa-select.otp }}"
-              - action:
-                  mouse_click:
-                    selector: "button[class='button button--primary']"
-      - id: mfa
-        action:
-          branch:
-            if: |
-              {{ "We don't recognize this device" in browser.content }}
-            steps:
-              - action:
-                  mouse_click:
-                    selector: "#header-simplerAuth-dropdownoptions-styledselect"
-              - id: 2fa
-                action:
-                  ask:
-                    prompt:
-                      title: "Select your 2-factor method"
-                      component:
-                        dropdown:
-                          merge:
-                            - if: "{{ not ('xxx-' in option.text) }}"
-                              option:
-                                disabled: true
-                            - if: "{{ 'Call us' in option.text }}"
-                              option:
-                                hidden: true
-                          from:
-                            selector:
-                              list_selector: "#ul-list-container-simplerAuth-dropdownoptions-styledselect > li"
-                              iterator: "span[id*='container-primary']"
-                            mapper:
-                              value: "{{ element.attrs.id.val }}"
-                              text: "{{ element.data }}"
-              - action:
-                  mouse_click:
-                    selector: "a > span[id='{{ step.mfa.2fa }}']"
-              - action:
-                  mouse_click:
-                    selector: "button[id*='requestIdentificationCode-sm']"
-              - id: otp
-                action:
-                  ask:
-                    prompt:
-                      title: OTP Code
-                      description: Please enter the OTP code sent to you
-                      component:
-                        input:
-                          type: PASSWORD
-              - action:
+                    type: PASSWORD
+        - id: password
+          action:
+            ask:
+              prompt:
+                title: Password
+                component:
                   input:
-                    selector: "input[id*='otpcode_input-input-field']"
-                    value: "{{ step.mfa.otp }}"
-              - action:
-                  input:
-                    selector: "input[id*='password_input-input-field']"
-                    value: "{{ step.password }}"
-              - action:
-                  mouse_click:
-                    selector: "button[id*='log_on_to_landing_page-sm']"
+                    type: PASSWORD
+        - action:
+            input:
+              selector: "#userId-text-input-field"
+              value: "{{ step.username }}"
+        - action:
+            input:
+              selector: "#password-text-input-field"
+              value: "{{ step.password }}"
+        - action:
+            mouse_click:
+              selector: "#signin-button"
+        - id: mfa-select
+          action:
+            branch:
+              if: |
+                {{"Let's make sure it's you" in browser.content}}
+              steps:
+                - id: selected
+                  action:
+                    ask:
+                      prompt:
+                        title: Select MFA method
+                        component:
+                          dropdown:
+                            from:
+                              selector:
+                                list_selector: "ul[id='mds-list__list-items']"
+                                iterator: "span[id*='list-item__input-label-optionsList-1']"
+                              mapper:
+                                value: "{{ element.attrs.id.val }}"
+                                text: "{{ element.data }}"
+                - action:
+                    mouse_click:
+                      selector: "span[id='{{ step.mfa-select.selected }}']"
+                - action:
+                    mouse_click:
+                      selector: "button[class='button button--primary']"
+                - id: otp
+                  action:
+                    ask:
+                      prompt:
+                        title: Enter your OTP code
+                        component:
+                          input:
+                            type: PASSWORD
+                - action:
+                    input:
+                      selector: "input[id='otpInput-input']"
+                      value: "{{ step.mfa-select.otp }}"
+                - action:
+                    mouse_click:
+                      selector: "button[class='button button--primary']"
+        - id: mfa
+          action:
+            branch:
+              if: |
+                {{ "We don't recognize this device" in browser.content }}
+              steps:
+                - action:
+                    mouse_click:
+                      selector: "#header-simplerAuth-dropdownoptions-styledselect"
+                - id: 2fa
+                  action:
+                    ask:
+                      prompt:
+                        title: "Select your 2-factor method"
+                        component:
+                          dropdown:
+                            merge:
+                              - if: "{{ not ('xxx-' in option.text) }}"
+                                option:
+                                  disabled: true
+                              - if: "{{ 'Call us' in option.text }}"
+                                option:
+                                  hidden: true
+                            from:
+                              selector:
+                                list_selector: "#ul-list-container-simplerAuth-dropdownoptions-styledselect > li"
+                                iterator: "span[id*='container-primary']"
+                              mapper:
+                                value: "{{ element.attrs.id.val }}"
+                                text: "{{ element.data }}"
+                - action:
+                    mouse_click:
+                      selector: "a > span[id='{{ step.mfa.2fa }}']"
+                - action:
+                    mouse_click:
+                      selector: "button[id*='requestIdentificationCode-sm']"
+                - id: otp
+                  action:
+                    ask:
+                      prompt:
+                        title: OTP Code
+                        description: Please enter the OTP code sent to you
+                        component:
+                          input:
+                            type: PASSWORD
+                - action:
+                    input:
+                      selector: "input[id*='otpcode_input-input-field']"
+                      value: "{{ step.mfa.otp }}"
+                - action:
+                    input:
+                      selector: "input[id*='password_input-input-field']"
+                      value: "{{ step.password }}"
+                - action:
+                    mouse_click:
+                      selector: "button[id*='log_on_to_landing_page-sm']"

@@ -3,8 +3,6 @@ package testutils
 import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/suite"
-	"github.com/tak-sh/tak/pkg/mocks/enginemocks"
-	"github.com/tak-sh/tak/pkg/mocks/stepmocks"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 )
@@ -33,30 +31,4 @@ func AllEmpty[T comparable](s *suite.Suite, t []T, args ...any) bool {
 	}
 
 	return s.Equal(zeroSl, t, args...)
-}
-
-type Action struct {
-	*stepmocks.Action
-	*enginemocks.PathNode
-}
-
-type BranchAction struct {
-	*stepmocks.Action
-	*enginemocks.PathNode
-	*stepmocks.Branches
-}
-
-func NewBranchAction() *BranchAction {
-	return &BranchAction{
-		Branches: new(stepmocks.Branches),
-		Action:   new(stepmocks.Action),
-		PathNode: new(enginemocks.PathNode),
-	}
-}
-
-func NewAction() *Action {
-	return &Action{
-		Action:   new(stepmocks.Action),
-		PathNode: new(enginemocks.PathNode),
-	}
 }

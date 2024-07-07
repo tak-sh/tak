@@ -1,0 +1,17 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.EachTemplateData.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "key": {
+      "description": "The full key. This does not include the base key. E.g. given the following key vals\n obj.field1 = 1\n obj.field2 = 2\n obj1.field3 = 3\n The key would either be \"field1\" or \"field2\".",
+      "type": "string"
+    },
+    "value": {
+      "description": "The value of the key.",
+      "type": "string"
+    }
+  },
+  "title": "Each Template Data",
+  "type": "object"
+}

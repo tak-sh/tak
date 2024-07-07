@@ -7,8 +7,8 @@
 package v1beta1
 
 import (
-	v1beta1 "github.com/tak-sh/tak/generated/go/api/metadata/v1beta1"
-	v1beta11 "github.com/tak-sh/tak/generated/go/api/script/v1beta1"
+	_ "github.com/tak-sh/tak/generated/go/api/metadata/v1beta1"
+	_ "github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -22,19 +22,63 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Provides the instructions necessary for a user to add an Account to
-// tak.
-type Provider struct {
+type AccountType_Enum int32
+
+const (
+	AccountType_unknown     AccountType_Enum = 0
+	AccountType_bank        AccountType_Enum = 1
+	AccountType_credit_card AccountType_Enum = 2
+)
+
+// Enum value maps for AccountType_Enum.
+var (
+	AccountType_Enum_name = map[int32]string{
+		0: "unknown",
+		1: "bank",
+		2: "credit_card",
+	}
+	AccountType_Enum_value = map[string]int32{
+		"unknown":     0,
+		"bank":        1,
+		"credit_card": 2,
+	}
+)
+
+func (x AccountType_Enum) Enum() *AccountType_Enum {
+	p := new(AccountType_Enum)
+	*p = x
+	return p
+}
+
+func (x AccountType_Enum) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AccountType_Enum) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_provider_v1beta1_provider_proto_enumTypes[0].Descriptor()
+}
+
+func (AccountType_Enum) Type() protoreflect.EnumType {
+	return &file_api_provider_v1beta1_provider_proto_enumTypes[0]
+}
+
+func (x AccountType_Enum) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AccountType_Enum.Descriptor instead.
+func (AccountType_Enum) EnumDescriptor() ([]byte, []int) {
+	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{4, 0}
+}
+
+type DownloadTransactions struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
-
-	Metadata *v1beta1.Metadata `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	Spec     *Spec             `protobuf:"bytes,2,opt,name=spec,proto3" json:"spec,omitempty"`
 }
 
-func (x *Provider) Reset() {
-	*x = Provider{}
+func (x *DownloadTransactions) Reset() {
+	*x = DownloadTransactions{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -42,13 +86,13 @@ func (x *Provider) Reset() {
 	}
 }
 
-func (x *Provider) String() string {
+func (x *DownloadTransactions) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Provider) ProtoMessage() {}
+func (*DownloadTransactions) ProtoMessage() {}
 
-func (x *Provider) ProtoReflect() protoreflect.Message {
+func (x *DownloadTransactions) ProtoReflect() protoreflect.Message {
 	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -60,39 +104,19 @@ func (x *Provider) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Provider.ProtoReflect.Descriptor instead.
-func (*Provider) Descriptor() ([]byte, []int) {
+// Deprecated: Use DownloadTransactions.ProtoReflect.Descriptor instead.
+func (*DownloadTransactions) Descriptor() ([]byte, []int) {
 	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Provider) GetMetadata() *v1beta1.Metadata {
-	if x != nil {
-		return x.Metadata
-	}
-	return nil
-}
-
-func (x *Provider) GetSpec() *Spec {
-	if x != nil {
-		return x.Spec
-	}
-	return nil
-}
-
-type Spec struct {
+type Login struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
-
-	// A script to handle the login flow for an account. This must take MFA into consideration
-	// when writing.
-	Login *v1beta11.Script `protobuf:"bytes,1,opt,name=login,proto3" json:"login,omitempty"`
-	// A script to handle downloading transactions file from the account.
-	DownloadTransactions *v1beta11.Script `protobuf:"bytes,2,opt,name=download_transactions,proto3" json:"download_transactions,omitempty"`
 }
 
-func (x *Spec) Reset() {
-	*x = Spec{}
+func (x *Login) Reset() {
+	*x = Login{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -100,13 +124,13 @@ func (x *Spec) Reset() {
 	}
 }
 
-func (x *Spec) String() string {
+func (x *Login) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Spec) ProtoMessage() {}
+func (*Login) ProtoMessage() {}
 
-func (x *Spec) ProtoReflect() protoreflect.Message {
+func (x *Login) ProtoReflect() protoreflect.Message {
 	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -118,21 +142,392 @@ func (x *Spec) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Spec.ProtoReflect.Descriptor instead.
-func (*Spec) Descriptor() ([]byte, []int) {
+// Deprecated: Use Login.ProtoReflect.Descriptor instead.
+func (*Login) Descriptor() ([]byte, []int) {
 	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Spec) GetLogin() *v1beta11.Script {
-	if x != nil {
-		return x.Login
-	}
-	return nil
+type ListAccounts struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
 }
 
-func (x *Spec) GetDownloadTransactions() *v1beta11.Script {
+func (x *ListAccounts) Reset() {
+	*x = ListAccounts{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ListAccounts) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAccounts) ProtoMessage() {}
+
+func (x *ListAccounts) ProtoReflect() protoreflect.Message {
+	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAccounts.ProtoReflect.Descriptor instead.
+func (*ListAccounts) Descriptor() ([]byte, []int) {
+	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{2}
+}
+
+type Account struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name string           `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Type AccountType_Enum `protobuf:"varint,2,opt,name=type,proto3,enum=tak.sh.api.provider.v1beta1.AccountType_Enum" json:"type,omitempty"`
+}
+
+func (x *Account) Reset() {
+	*x = Account{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Account) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Account) ProtoMessage() {}
+
+func (x *Account) ProtoReflect() protoreflect.Message {
+	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Account.ProtoReflect.Descriptor instead.
+func (*Account) Descriptor() ([]byte, []int) {
+	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Account) GetName() string {
 	if x != nil {
-		return x.DownloadTransactions
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Account) GetType() AccountType_Enum {
+	if x != nil {
+		return x.Type
+	}
+	return AccountType_unknown
+}
+
+type AccountType struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *AccountType) Reset() {
+	*x = AccountType{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AccountType) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AccountType) ProtoMessage() {}
+
+func (x *AccountType) ProtoReflect() protoreflect.Message {
+	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AccountType.ProtoReflect.Descriptor instead.
+func (*AccountType) Descriptor() ([]byte, []int) {
+	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{4}
+}
+
+type DownloadTransactions_Request struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AccountName string `protobuf:"bytes,1,opt,name=account_name,proto3" json:"account_name,omitempty"`
+	TargetPath  string `protobuf:"bytes,2,opt,name=target_path,proto3" json:"target_path,omitempty"`
+}
+
+func (x *DownloadTransactions_Request) Reset() {
+	*x = DownloadTransactions_Request{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DownloadTransactions_Request) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DownloadTransactions_Request) ProtoMessage() {}
+
+func (x *DownloadTransactions_Request) ProtoReflect() protoreflect.Message {
+	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DownloadTransactions_Request.ProtoReflect.Descriptor instead.
+func (*DownloadTransactions_Request) Descriptor() ([]byte, []int) {
+	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{0, 0}
+}
+
+func (x *DownloadTransactions_Request) GetAccountName() string {
+	if x != nil {
+		return x.AccountName
+	}
+	return ""
+}
+
+func (x *DownloadTransactions_Request) GetTargetPath() string {
+	if x != nil {
+		return x.TargetPath
+	}
+	return ""
+}
+
+type DownloadTransactions_Response struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *DownloadTransactions_Response) Reset() {
+	*x = DownloadTransactions_Response{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DownloadTransactions_Response) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DownloadTransactions_Response) ProtoMessage() {}
+
+func (x *DownloadTransactions_Response) ProtoReflect() protoreflect.Message {
+	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DownloadTransactions_Response.ProtoReflect.Descriptor instead.
+func (*DownloadTransactions_Response) Descriptor() ([]byte, []int) {
+	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{0, 1}
+}
+
+type Login_Request struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *Login_Request) Reset() {
+	*x = Login_Request{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Login_Request) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Login_Request) ProtoMessage() {}
+
+func (x *Login_Request) ProtoReflect() protoreflect.Message {
+	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Login_Request.ProtoReflect.Descriptor instead.
+func (*Login_Request) Descriptor() ([]byte, []int) {
+	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{1, 0}
+}
+
+type Login_Response struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *Login_Response) Reset() {
+	*x = Login_Response{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Login_Response) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Login_Response) ProtoMessage() {}
+
+func (x *Login_Response) ProtoReflect() protoreflect.Message {
+	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Login_Response.ProtoReflect.Descriptor instead.
+func (*Login_Response) Descriptor() ([]byte, []int) {
+	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{1, 1}
+}
+
+type ListAccounts_Request struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *ListAccounts_Request) Reset() {
+	*x = ListAccounts_Request{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ListAccounts_Request) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAccounts_Request) ProtoMessage() {}
+
+func (x *ListAccounts_Request) ProtoReflect() protoreflect.Message {
+	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAccounts_Request.ProtoReflect.Descriptor instead.
+func (*ListAccounts_Request) Descriptor() ([]byte, []int) {
+	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{2, 0}
+}
+
+type ListAccounts_Response struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Accounts []*Account `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
+}
+
+func (x *ListAccounts_Response) Reset() {
+	*x = ListAccounts_Response{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_provider_v1beta1_provider_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ListAccounts_Response) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAccounts_Response) ProtoMessage() {}
+
+func (x *ListAccounts_Response) ProtoReflect() protoreflect.Message {
+	mi := &file_api_provider_v1beta1_provider_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAccounts_Response.ProtoReflect.Descriptor instead.
+func (*ListAccounts_Response) Descriptor() ([]byte, []int) {
+	return file_api_provider_v1beta1_provider_proto_rawDescGZIP(), []int{2, 1}
+}
+
+func (x *ListAccounts_Response) GetAccounts() []*Account {
+	if x != nil {
+		return x.Accounts
 	}
 	return nil
 }
@@ -148,41 +543,73 @@ var file_api_provider_v1beta1_provider_proto_rawDesc = []byte{
 	0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x2f, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x2e, 0x70, 0x72,
 	0x6f, 0x74, 0x6f, 0x1a, 0x23, 0x61, 0x70, 0x69, 0x2f, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74,
 	0x61, 0x2f, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x2f, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61,
-	0x74, 0x61, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x84, 0x01, 0x0a, 0x08, 0x50, 0x72, 0x6f,
-	0x76, 0x69, 0x64, 0x65, 0x72, 0x12, 0x41, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74,
-	0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x25, 0x2e, 0x74, 0x61, 0x6b, 0x2e, 0x73, 0x68,
-	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x2e, 0x76, 0x31,
-	0x62, 0x65, 0x74, 0x61, 0x31, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x52, 0x08,
-	0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x35, 0x0a, 0x04, 0x73, 0x70, 0x65, 0x63,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x21, 0x2e, 0x74, 0x61, 0x6b, 0x2e, 0x73, 0x68, 0x2e,
+	0x74, 0x61, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x73, 0x0a, 0x14, 0x44, 0x6f, 0x77, 0x6e,
+	0x6c, 0x6f, 0x61, 0x64, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73,
+	0x1a, 0x4f, 0x0a, 0x07, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x22, 0x0a, 0x0c, 0x61,
+	0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x0c, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x12,
+	0x20, 0x0a, 0x0b, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x5f, 0x70, 0x61, 0x74, 0x68, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x5f, 0x70, 0x61, 0x74,
+	0x68, 0x1a, 0x0a, 0x0a, 0x08, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x1e, 0x0a,
+	0x05, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x1a, 0x09, 0x0a, 0x07, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x0a, 0x0a, 0x08, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x67, 0x0a,
+	0x0c, 0x4c, 0x69, 0x73, 0x74, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x73, 0x1a, 0x09, 0x0a,
+	0x07, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x4c, 0x0a, 0x08, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x40, 0x0a, 0x08, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x73,
+	0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x24, 0x2e, 0x74, 0x61, 0x6b, 0x2e, 0x73, 0x68, 0x2e,
 	0x61, 0x70, 0x69, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x62,
-	0x65, 0x74, 0x61, 0x31, 0x2e, 0x53, 0x70, 0x65, 0x63, 0x52, 0x04, 0x73, 0x70, 0x65, 0x63, 0x22,
-	0x98, 0x01, 0x0a, 0x04, 0x53, 0x70, 0x65, 0x63, 0x12, 0x37, 0x0a, 0x05, 0x6c, 0x6f, 0x67, 0x69,
-	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x21, 0x2e, 0x74, 0x61, 0x6b, 0x2e, 0x73, 0x68,
-	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x2e, 0x76, 0x31, 0x62, 0x65,
-	0x74, 0x61, 0x31, 0x2e, 0x53, 0x63, 0x72, 0x69, 0x70, 0x74, 0x52, 0x05, 0x6c, 0x6f, 0x67, 0x69,
-	0x6e, 0x12, 0x57, 0x0a, 0x15, 0x64, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x5f, 0x74, 0x72,
-	0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x21, 0x2e, 0x74, 0x61, 0x6b, 0x2e, 0x73, 0x68, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73, 0x63,
-	0x72, 0x69, 0x70, 0x74, 0x2e, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x2e, 0x53, 0x63, 0x72,
-	0x69, 0x70, 0x74, 0x52, 0x15, 0x64, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x5f, 0x74, 0x72,
-	0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x42, 0xfa, 0x01, 0x0a, 0x1f, 0x63,
-	0x6f, 0x6d, 0x2e, 0x74, 0x61, 0x6b, 0x2e, 0x73, 0x68, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x70, 0x72,
-	0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x42, 0x0d,
-	0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a,
-	0x37, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x61, 0x6b, 0x2d,
-	0x73, 0x68, 0x2f, 0x74, 0x61, 0x6b, 0x2f, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
-	0x2f, 0x67, 0x6f, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72,
-	0x2f, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0xa2, 0x02, 0x04, 0x54, 0x53, 0x41, 0x50, 0xaa,
-	0x02, 0x1b, 0x54, 0x61, 0x6b, 0x2e, 0x53, 0x68, 0x2e, 0x41, 0x70, 0x69, 0x2e, 0x50, 0x72, 0x6f,
-	0x76, 0x69, 0x64, 0x65, 0x72, 0x2e, 0x56, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0xca, 0x02, 0x1b,
-	0x54, 0x61, 0x6b, 0x5c, 0x53, 0x68, 0x5c, 0x41, 0x70, 0x69, 0x5c, 0x50, 0x72, 0x6f, 0x76, 0x69,
-	0x64, 0x65, 0x72, 0x5c, 0x56, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0xe2, 0x02, 0x27, 0x54, 0x61,
-	0x6b, 0x5c, 0x53, 0x68, 0x5c, 0x41, 0x70, 0x69, 0x5c, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65,
-	0x72, 0x5c, 0x56, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74,
-	0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x1f, 0x54, 0x61, 0x6b, 0x3a, 0x3a, 0x53, 0x68, 0x3a,
-	0x3a, 0x41, 0x70, 0x69, 0x3a, 0x3a, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x3a, 0x3a,
-	0x56, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x74, 0x61, 0x31, 0x2e, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x52, 0x08, 0x61, 0x63,
+	0x63, 0x6f, 0x75, 0x6e, 0x74, 0x73, 0x22, 0x60, 0x0a, 0x07, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e,
+	0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x41, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x0e, 0x32, 0x2d, 0x2e, 0x74, 0x61, 0x6b, 0x2e, 0x73, 0x68, 0x2e, 0x61, 0x70, 0x69,
+	0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61,
+	0x31, 0x2e, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x2e, 0x45, 0x6e,
+	0x75, 0x6d, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x22, 0x3d, 0x0a, 0x0b, 0x41, 0x63, 0x63, 0x6f,
+	0x75, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x22, 0x2e, 0x0a, 0x04, 0x45, 0x6e, 0x75, 0x6d, 0x12,
+	0x0b, 0x0a, 0x07, 0x75, 0x6e, 0x6b, 0x6e, 0x6f, 0x77, 0x6e, 0x10, 0x00, 0x12, 0x08, 0x0a, 0x04,
+	0x62, 0x61, 0x6e, 0x6b, 0x10, 0x01, 0x12, 0x0f, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x64, 0x69, 0x74,
+	0x5f, 0x63, 0x61, 0x72, 0x64, 0x10, 0x02, 0x32, 0xfa, 0x02, 0x0a, 0x0f, 0x50, 0x72, 0x6f, 0x76,
+	0x69, 0x64, 0x65, 0x72, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x75, 0x0a, 0x0c, 0x4c,
+	0x69, 0x73, 0x74, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x73, 0x12, 0x31, 0x2e, 0x74, 0x61,
+	0x6b, 0x2e, 0x73, 0x68, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65,
+	0x72, 0x2e, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x41, 0x63,
+	0x63, 0x6f, 0x75, 0x6e, 0x74, 0x73, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x32,
+	0x2e, 0x74, 0x61, 0x6b, 0x2e, 0x73, 0x68, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x70, 0x72, 0x6f, 0x76,
+	0x69, 0x64, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x2e, 0x4c, 0x69, 0x73,
+	0x74, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x73, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x60, 0x0a, 0x05, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x12, 0x2a, 0x2e, 0x74, 0x61,
+	0x6b, 0x2e, 0x73, 0x68, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65,
+	0x72, 0x2e, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x2e, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x2e,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2b, 0x2e, 0x74, 0x61, 0x6b, 0x2e, 0x73, 0x68,
+	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x2e, 0x76, 0x31,
+	0x62, 0x65, 0x74, 0x61, 0x31, 0x2e, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x2e, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x8d, 0x01, 0x0a, 0x14, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61,
+	0x64, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x39, 0x2e,
+	0x74, 0x61, 0x6b, 0x2e, 0x73, 0x68, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69,
+	0x64, 0x65, 0x72, 0x2e, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x2e, 0x44, 0x6f, 0x77, 0x6e,
+	0x6c, 0x6f, 0x61, 0x64, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73,
+	0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x3a, 0x2e, 0x74, 0x61, 0x6b, 0x2e, 0x73,
+	0x68, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x2e, 0x76,
+	0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x2e, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x54,
+	0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x42, 0xfa, 0x01, 0x0a, 0x1f, 0x63, 0x6f, 0x6d, 0x2e, 0x74, 0x61, 0x6b,
+	0x2e, 0x73, 0x68, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72,
+	0x2e, 0x76, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0x42, 0x0d, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64,
+	0x65, 0x72, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x37, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x61, 0x6b, 0x2d, 0x73, 0x68, 0x2f, 0x74, 0x61, 0x6b,
+	0x2f, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2f, 0x67, 0x6f, 0x2f, 0x61, 0x70,
+	0x69, 0x2f, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x2f, 0x76, 0x31, 0x62, 0x65, 0x74,
+	0x61, 0x31, 0xa2, 0x02, 0x04, 0x54, 0x53, 0x41, 0x50, 0xaa, 0x02, 0x1b, 0x54, 0x61, 0x6b, 0x2e,
+	0x53, 0x68, 0x2e, 0x41, 0x70, 0x69, 0x2e, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x2e,
+	0x56, 0x31, 0x62, 0x65, 0x74, 0x61, 0x31, 0xca, 0x02, 0x1b, 0x54, 0x61, 0x6b, 0x5c, 0x53, 0x68,
+	0x5c, 0x41, 0x70, 0x69, 0x5c, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x5c, 0x56, 0x31,
+	0x62, 0x65, 0x74, 0x61, 0x31, 0xe2, 0x02, 0x27, 0x54, 0x61, 0x6b, 0x5c, 0x53, 0x68, 0x5c, 0x41,
+	0x70, 0x69, 0x5c, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x5c, 0x56, 0x31, 0x62, 0x65,
+	0x74, 0x61, 0x31, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea,
+	0x02, 0x1f, 0x54, 0x61, 0x6b, 0x3a, 0x3a, 0x53, 0x68, 0x3a, 0x3a, 0x41, 0x70, 0x69, 0x3a, 0x3a,
+	0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x3a, 0x3a, 0x56, 0x31, 0x62, 0x65, 0x74, 0x61,
+	0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -197,23 +624,36 @@ func file_api_provider_v1beta1_provider_proto_rawDescGZIP() []byte {
 	return file_api_provider_v1beta1_provider_proto_rawDescData
 }
 
-var file_api_provider_v1beta1_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_api_provider_v1beta1_provider_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_api_provider_v1beta1_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_api_provider_v1beta1_provider_proto_goTypes = []any{
-	(*Provider)(nil),         // 0: tak.sh.api.provider.v1beta1.Provider
-	(*Spec)(nil),             // 1: tak.sh.api.provider.v1beta1.Spec
-	(*v1beta1.Metadata)(nil), // 2: tak.sh.api.metadata.v1beta1.Metadata
-	(*v1beta11.Script)(nil),  // 3: tak.sh.api.script.v1beta1.Script
+	(AccountType_Enum)(0),                 // 0: tak.sh.api.provider.v1beta1.AccountType.Enum
+	(*DownloadTransactions)(nil),          // 1: tak.sh.api.provider.v1beta1.DownloadTransactions
+	(*Login)(nil),                         // 2: tak.sh.api.provider.v1beta1.Login
+	(*ListAccounts)(nil),                  // 3: tak.sh.api.provider.v1beta1.ListAccounts
+	(*Account)(nil),                       // 4: tak.sh.api.provider.v1beta1.Account
+	(*AccountType)(nil),                   // 5: tak.sh.api.provider.v1beta1.AccountType
+	(*DownloadTransactions_Request)(nil),  // 6: tak.sh.api.provider.v1beta1.DownloadTransactions.Request
+	(*DownloadTransactions_Response)(nil), // 7: tak.sh.api.provider.v1beta1.DownloadTransactions.Response
+	(*Login_Request)(nil),                 // 8: tak.sh.api.provider.v1beta1.Login.Request
+	(*Login_Response)(nil),                // 9: tak.sh.api.provider.v1beta1.Login.Response
+	(*ListAccounts_Request)(nil),          // 10: tak.sh.api.provider.v1beta1.ListAccounts.Request
+	(*ListAccounts_Response)(nil),         // 11: tak.sh.api.provider.v1beta1.ListAccounts.Response
 }
 var file_api_provider_v1beta1_provider_proto_depIdxs = []int32{
-	2, // 0: tak.sh.api.provider.v1beta1.Provider.metadata:type_name -> tak.sh.api.metadata.v1beta1.Metadata
-	1, // 1: tak.sh.api.provider.v1beta1.Provider.spec:type_name -> tak.sh.api.provider.v1beta1.Spec
-	3, // 2: tak.sh.api.provider.v1beta1.Spec.login:type_name -> tak.sh.api.script.v1beta1.Script
-	3, // 3: tak.sh.api.provider.v1beta1.Spec.download_transactions:type_name -> tak.sh.api.script.v1beta1.Script
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: tak.sh.api.provider.v1beta1.Account.type:type_name -> tak.sh.api.provider.v1beta1.AccountType.Enum
+	4,  // 1: tak.sh.api.provider.v1beta1.ListAccounts.Response.accounts:type_name -> tak.sh.api.provider.v1beta1.Account
+	10, // 2: tak.sh.api.provider.v1beta1.ProviderService.ListAccounts:input_type -> tak.sh.api.provider.v1beta1.ListAccounts.Request
+	8,  // 3: tak.sh.api.provider.v1beta1.ProviderService.Login:input_type -> tak.sh.api.provider.v1beta1.Login.Request
+	6,  // 4: tak.sh.api.provider.v1beta1.ProviderService.DownloadTransactions:input_type -> tak.sh.api.provider.v1beta1.DownloadTransactions.Request
+	11, // 5: tak.sh.api.provider.v1beta1.ProviderService.ListAccounts:output_type -> tak.sh.api.provider.v1beta1.ListAccounts.Response
+	9,  // 6: tak.sh.api.provider.v1beta1.ProviderService.Login:output_type -> tak.sh.api.provider.v1beta1.Login.Response
+	7,  // 7: tak.sh.api.provider.v1beta1.ProviderService.DownloadTransactions:output_type -> tak.sh.api.provider.v1beta1.DownloadTransactions.Response
+	5,  // [5:8] is the sub-list for method output_type
+	2,  // [2:5] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_api_provider_v1beta1_provider_proto_init() }
@@ -223,7 +663,7 @@ func file_api_provider_v1beta1_provider_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_api_provider_v1beta1_provider_proto_msgTypes[0].Exporter = func(v any, i int) any {
-			switch v := v.(*Provider); i {
+			switch v := v.(*DownloadTransactions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -235,7 +675,115 @@ func file_api_provider_v1beta1_provider_proto_init() {
 			}
 		}
 		file_api_provider_v1beta1_provider_proto_msgTypes[1].Exporter = func(v any, i int) any {
-			switch v := v.(*Spec); i {
+			switch v := v.(*Login); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_provider_v1beta1_provider_proto_msgTypes[2].Exporter = func(v any, i int) any {
+			switch v := v.(*ListAccounts); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_provider_v1beta1_provider_proto_msgTypes[3].Exporter = func(v any, i int) any {
+			switch v := v.(*Account); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_provider_v1beta1_provider_proto_msgTypes[4].Exporter = func(v any, i int) any {
+			switch v := v.(*AccountType); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_provider_v1beta1_provider_proto_msgTypes[5].Exporter = func(v any, i int) any {
+			switch v := v.(*DownloadTransactions_Request); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_provider_v1beta1_provider_proto_msgTypes[6].Exporter = func(v any, i int) any {
+			switch v := v.(*DownloadTransactions_Response); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_provider_v1beta1_provider_proto_msgTypes[7].Exporter = func(v any, i int) any {
+			switch v := v.(*Login_Request); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_provider_v1beta1_provider_proto_msgTypes[8].Exporter = func(v any, i int) any {
+			switch v := v.(*Login_Response); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_provider_v1beta1_provider_proto_msgTypes[9].Exporter = func(v any, i int) any {
+			switch v := v.(*ListAccounts_Request); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_provider_v1beta1_provider_proto_msgTypes[10].Exporter = func(v any, i int) any {
+			switch v := v.(*ListAccounts_Response); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -252,13 +800,14 @@ func file_api_provider_v1beta1_provider_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_provider_v1beta1_provider_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   2,
+			NumEnums:      1,
+			NumMessages:   11,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_api_provider_v1beta1_provider_proto_goTypes,
 		DependencyIndexes: file_api_provider_v1beta1_provider_proto_depIdxs,
+		EnumInfos:         file_api_provider_v1beta1_provider_proto_enumTypes,
 		MessageInfos:      file_api_provider_v1beta1_provider_proto_msgTypes,
 	}.Build()
 	File_api_provider_v1beta1_provider_proto = out.File

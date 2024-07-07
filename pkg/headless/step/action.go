@@ -33,6 +33,8 @@ func New(id string, a *v1beta1.Action) (Action, error) {
 		return NewNav(id, act), nil
 	} else if act := a.GetBranch(); act != nil {
 		return NewBranch(id, act)
+	} else if act := a.GetStore(); act != nil {
+		return NewStoreAction(id, act)
 	}
 
 	return nil, except.NewInvalid("empty actions are not allowed")

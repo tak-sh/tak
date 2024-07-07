@@ -7,17 +7,48 @@ option go_package = "github.com/tak-sh/tak/generated/go/api/provider/v1beta1";
 import "api/script/v1beta1/script.proto";
 import "api/metadata/v1beta1/metadata.proto";
 
-// Provides the instructions necessary for a user to add an Account to
-// tak.
-message Provider {
-  metadata.v1beta1.Metadata metadata = 1;
-  Spec spec = 2;
+service ProviderService {
+  rpc ListAccounts(ListAccounts.Request) returns (ListAccounts.Response);
+  rpc Login(Login.Request) returns (Login.Response);
+  rpc DownloadTransactions(DownloadTransactions.Request) returns (DownloadTransactions.Response);
 }
 
-message Spec {
-  // A script to handle the login flow for an account. This must take MFA into consideration
-  // when writing.
-  script.v1beta1.Script login = 1;
-  // A script to handle downloading transactions file from the account.
-  script.v1beta1.Script download_transactions = 2 [json_name = "download_transactions"];
+message DownloadTransactions {
+  message Request {
+    string account_name = 1 [json_name = "account_name"];
+    string target_path = 2 [json_name = "target_path"];
+  }
+
+  message Response {
+  }
+}
+
+message Login {
+  message Request {
+  }
+
+  message Response {
+  }
+}
+
+message ListAccounts {
+  message Request {
+  }
+
+  message Response {
+    repeated Account accounts = 1;
+  }
+}
+
+message Account {
+  string name = 1;
+  AccountType.Enum type = 2;
+}
+
+message AccountType {
+  enum Enum {
+    unknown = 0;
+    bank = 1;
+    credit_card = 2;
+  }
 }

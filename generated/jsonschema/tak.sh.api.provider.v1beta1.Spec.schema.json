@@ -4,11 +4,14 @@
   "additionalProperties": false,
   "properties": {
     "download_transactions": {
-      "$ref": "tak.sh.api.script.v1beta1.Script.schema.json",
+      "$ref": "tak.sh.api.provider.v1beta1.DownloadTransactionsSpec.schema.json",
       "description": "A script to handle downloading transactions file from the account."
     },
+    "list_accounts": {
+      "$ref": "tak.sh.api.provider.v1beta1.ListAccountsSpec.schema.json"
+    },
     "login": {
-      "$ref": "tak.sh.api.script.v1beta1.Script.schema.json",
+      "$ref": "tak.sh.api.provider.v1beta1.LoginSpec.schema.json",
       "description": "A script to handle the login flow for an account. This must take MFA into consideration\n when writing."
     }
   },

@@ -1,0 +1,12 @@
+{
+  "$id": "tak.sh.api.provider.v1beta1.DownloadTransactionsSpec.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "script": {
+      "$ref": "tak.sh.api.script.v1beta1.Script.schema.json"
+    }
+  },
+  "title": "Download Transactions Spec",
+  "type": "object"
+}
