@@ -8,6 +8,7 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
+	"time"
 )
 
 func NewMouseClick(id string, d *v1beta1.Action_MouseClick) (*MouseClick, error) {
@@ -37,6 +38,23 @@ type MouseClick struct {
 	SelectorTemp *engine.TemplateRenderer
 }
 
+func (m *MouseClick) Eval(c *engine.Context, to time.Duration) error {
+	c, cancel := c.WithTimeout(to)
+	defer cancel()
+
+	sel := m.SelectorTemp.Render(c.TemplateData)
+	if m.GetDouble() {
+		return chromedp.DoubleClick(sel).Do(c)
+	} else {
+		return chromedp.Click(sel).Do(c)
+	}
+}
+
+func (m *MouseClick) Cancel(err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *MouseClick) GetId() string {
 	return m.ID
 }
@@ -58,15 +76,6 @@ func (m *MouseClick) String() string {
 		click = "double clicking"
 	}
 	return fmt.Sprintf("%s on %s", click, m.GetSelector())
-}
-
-func (m *MouseClick) Act(c *engine.Context) error {
-	sel := m.SelectorTemp.Render(c.TemplateData)
-	if m.GetDouble() {
-		return chromedp.DoubleClick(sel).Do(c)
-	} else {
-		return chromedp.Click(sel).Do(c)
-	}
 }
 
 func (m *MouseClick) GetID() string {

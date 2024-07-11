@@ -10,6 +10,9 @@
     "branch": {
       "$ref": "tak.sh.api.script.v1beta1.Action.Branch.schema.json"
     },
+    "for_each_element": {
+      "$ref": "tak.sh.api.script.v1beta1.Action.ForEachElement.schema.json"
+    },
     "input": {
       "$ref": "tak.sh.api.script.v1beta1.Action.Input.schema.json",
       "description": "Input some text into an element."

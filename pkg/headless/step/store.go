@@ -7,6 +7,7 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"strings"
+	"time"
 )
 
 var _ Action = &StoreAction{}
@@ -15,6 +16,21 @@ type StoreAction struct {
 	*v1beta1.Action_Store
 	CompiledKeyVals []*KeyVal
 	ID              string
+}
+
+func (s *StoreAction) GetId() string {
+	return s.ID
+}
+
+func (s *StoreAction) Eval(c *engine.Context, to time.Duration) error {
+	c, cancel := c.WithTimeout(to)
+	defer cancel()
+
+	for _, kv := range s.CompiledKeyVals {
+		keys := strings.Join([]string{s.ID, kv.CompiledKey.Render(c.TemplateData)}, ".")
+		c.TemplateData.SetStepVal(keys, kv.CompiledValue.Render(c.TemplateData))
+	}
+	return nil
 }
 
 type KeyVal struct {
@@ -67,16 +83,4 @@ func (s *StoreAction) String() string {
 
 func (s *StoreAction) Validate() error {
 	return nil
-}
-
-func (s *StoreAction) Act(ctx *engine.Context) error {
-	for _, kv := range s.CompiledKeyVals {
-		keys := strings.Join([]string{s.ID, kv.CompiledKey.Render(ctx.TemplateData)}, ".")
-		ctx.TemplateData.SetStepVal(keys, kv.CompiledValue.Render(ctx.TemplateData))
-	}
-	return nil
-}
-
-func (s *StoreAction) GetID() string {
-	return s.ID
 }

@@ -22,39 +22,6 @@ func (_m *Instruction) EXPECT() *Instruction_Expecter {
 	return &Instruction_Expecter{mock: &_m.Mock}
 }
 
-// Cancel provides a mock function with given fields: err
-func (_m *Instruction) Cancel(err error) {
-	_m.Called(err)
-}
-
-// Instruction_Cancel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Cancel'
-type Instruction_Cancel_Call struct {
-	*mock.Call
-}
-
-// Cancel is a helper method to define mock.On call
-//   - err error
-func (_e *Instruction_Expecter) Cancel(err interface{}) *Instruction_Cancel_Call {
-	return &Instruction_Cancel_Call{Call: _e.mock.On("Cancel", err)}
-}
-
-func (_c *Instruction_Cancel_Call) Run(run func(err error)) *Instruction_Cancel_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(error))
-	})
-	return _c
-}
-
-func (_c *Instruction_Cancel_Call) Return() *Instruction_Cancel_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *Instruction_Cancel_Call) RunAndReturn(run func(error)) *Instruction_Cancel_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Eval provides a mock function with given fields: c, to
 func (_m *Instruction) Eval(c *engine.Context, to time.Duration) error {
 	ret := _m.Called(c, to)

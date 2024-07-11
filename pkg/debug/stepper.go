@@ -88,7 +88,7 @@ type controller struct {
 
 func (s *controller) Step() {
 	if len(s.readyChan) == 0 && s.Stepper != nil {
-		s.Stepper.Current().Val.Cancel(engine.ErrSkip)
+		s.Stepper.Current().Cancel(engine.ErrSkip)
 		s.readyChan <- struct{}{}
 	}
 }
@@ -116,7 +116,7 @@ func (s *controller) String() string {
 	return s.Stepper.String()
 }
 
-func (s *controller) Next(c *engine.Context) stepper.Handle {
+func (s *controller) Next(c *engine.Context) stepper.Step {
 	for {
 		select {
 		case <-c.Done():
@@ -129,7 +129,7 @@ func (s *controller) Next(c *engine.Context) stepper.Handle {
 
 		handle := s.Stepper.Next(c)
 		s.History.Push(&HandleEntry{
-			Data:   c.TemplateData.Merge(),
+			Data:   c.TemplateData.Copy(),
 			Handle: handle,
 		})
 		return handle
@@ -138,5 +138,5 @@ func (s *controller) Next(c *engine.Context) stepper.Handle {
 
 type HandleEntry struct {
 	Data   *engine.TemplateData
-	Handle stepper.Handle
+	Handle stepper.Step
 }

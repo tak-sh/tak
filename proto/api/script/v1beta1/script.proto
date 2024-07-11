@@ -73,6 +73,14 @@ message Action {
     repeated KeyVal key_vals = 1 [json_name = "key_vals"];
   }
 
+  // Executes actions for each element that is returned
+  // by the selector. The Element will be accessible as a
+  // template expression by the child action.
+  message ForEachElement {
+    string selector = 1;
+    repeated Action actions = 2;
+  }
+
   // Click on an element.
   optional MouseClick mouse_click = 1 [json_name = "mouse_click"];
 
@@ -87,6 +95,8 @@ message Action {
   optional Branch branch = 5;
 
   optional Store store = 6;
+
+  optional ForEachElement for_each_element = 7 [json_name = "for_each_element"];
 }
 
 message Prompt {

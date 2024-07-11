@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Context struct {
@@ -39,6 +40,7 @@ type Browser interface {
 	Exists(ctx context.Context, sel string) bool
 	Navigate(ctx context.Context, addr string) error
 	WriteInput(ctx context.Context, selector, content string) error
+	Content(ctx context.Context, selector string) ([]*v1beta1.HTMLNodeTemplateData, error)
 }
 
 type ContextOpts struct {
@@ -64,6 +66,16 @@ func NewContext(parent context.Context, str renderer.Stream, eval Evaluator, o C
 	}
 
 	return out, nil
+}
+
+func (c *Context) WithTimeout(to time.Duration) (*Context, context.CancelFunc) {
+	if to == 0 {
+		return c, func() {
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(c.Context, to)
+	return c.WithContext(ctx), cancel
 }
 
 func (c *Context) WithContext(ctx context.Context) *Context {
@@ -172,7 +184,7 @@ func (t *TemplateRenderer) Render(d *TemplateData) string {
 	if t == nil {
 		return ""
 	}
-	data := d.Merge()
+	data := d.Copy()
 
 	steps := data.Step
 	data.Step = nil
@@ -188,8 +200,34 @@ func (t *TemplateRenderer) Render(d *TemplateData) string {
 	return v
 }
 
+func NodeToTemplate(node *html.Node) *v1beta1.HTMLNodeTemplateData {
+	out := &v1beta1.HTMLNodeTemplateData{
+		Attrs:   make(map[string]*v1beta1.HTMLNodeTemplateData_Attribute),
+		Element: node.DataAtom.String(),
+	}
+
+	if node.FirstChild != nil {
+		out.Data = node.FirstChild.Data
+	}
+
+	for _, v := range node.Attr {
+		out.Attrs[v.Key] = &v1beta1.HTMLNodeTemplateData_Attribute{
+			Val:       v.Val,
+			Namespace: v.Namespace,
+		}
+	}
+
+	return out
+}
+
 type TemplateData struct {
 	*v1beta1.ScriptTemplateData
+}
+
+func (t *TemplateData) Copy() *TemplateData {
+	return &TemplateData{
+		ScriptTemplateData: proto.Clone(t.ScriptTemplateData).(*v1beta1.ScriptTemplateData),
+	}
 }
 
 func (t *TemplateData) ForEach(key string, f func(r *TemplateData)) {
@@ -202,7 +240,7 @@ func (t *TemplateData) ForEach(key string, f func(r *TemplateData)) {
 		}
 	}
 
-	cl := t.Merge()
+	cl := t.Copy()
 	cl.Each = fe
 	f(cl)
 }
@@ -223,7 +261,7 @@ func (t *TemplateData) SetStepVal(id, val string) {
 }
 
 func (t *TemplateData) Merge(m ...*TemplateData) *TemplateData {
-	out := proto.Clone(t.ScriptTemplateData).(*v1beta1.ScriptTemplateData)
+	out := t
 	for _, v := range m {
 		if v == nil {
 			continue
@@ -231,9 +269,7 @@ func (t *TemplateData) Merge(m ...*TemplateData) *TemplateData {
 		proto.Merge(out, v.ScriptTemplateData)
 	}
 
-	return &TemplateData{
-		ScriptTemplateData: out,
-	}
+	return out
 }
 
 var (
@@ -347,6 +383,38 @@ func NewBrowser() Browser {
 }
 
 type browser struct {
+}
+
+func (p *browser) Content(ctx context.Context, selector string) ([]*v1beta1.HTMLNodeTemplateData, error) {
+	out := make([]*v1beta1.HTMLNodeTemplateData, 0)
+	var nodes []*cdp.Node
+	err := chromedp.Nodes(selector, &nodes).Do(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range nodes {
+		a := &v1beta1.HTMLNodeTemplateData{
+			Data:    v.NodeValue,
+			Attrs:   map[string]*v1beta1.HTMLNodeTemplateData_Attribute{},
+			Element: v.LocalName,
+		}
+
+		for i := 0; i < len(v.Attributes); i += 2 {
+			name := v.Attributes[i]
+			val := v.Attributes[i+1]
+			a.Attrs[name] = &v1beta1.HTMLNodeTemplateData_Attribute{Val: val}
+		}
+
+		for _, v := range v.Children {
+			if v.NodeType == cdp.NodeTypeText {
+				a.Data = v.NodeValue
+			}
+		}
+
+		out = append(out, a)
+	}
+
+	return out, err
 }
 
 func (p *browser) WriteInput(ctx context.Context, selector, content string) error {

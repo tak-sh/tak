@@ -7,6 +7,7 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
+	"time"
 )
 
 func NewInput(id string, d *v1beta1.Action_Input) (*Input, error) {
@@ -34,6 +35,14 @@ type Input struct {
 	ValueTemp *engine.TemplateRenderer
 }
 
+func (i *Input) Eval(c *engine.Context, to time.Duration) error {
+	c, cancel := c.WithTimeout(to)
+	defer cancel()
+
+	val := i.ValueTemp.Render(c.TemplateData)
+	return c.Browser.WriteInput(c, i.GetSelector(), val)
+}
+
 func (i *Input) GetId() string {
 	return i.ID
 }
@@ -51,15 +60,6 @@ func (i *Input) Validate() error {
 
 func (i *Input) String() string {
 	return fmt.Sprintf("inputting %s into %s", i.GetValue(), i.GetSelector())
-}
-
-func (i *Input) Act(c *engine.Context) error {
-	val := i.ValueTemp.Render(c.TemplateData)
-	return c.Browser.WriteInput(c, i.GetSelector(), val)
-}
-
-func (i *Input) GetID() string {
-	return i.ID
 }
 
 func (i *Input) ToProto() *v1beta1.Action_Input {

@@ -198,6 +198,32 @@ func (s *StepperTestSuite) TestNext() {
 				ExpectedErr: "context deadline exceeded",
 			}
 		}(),
+		"completes if no signals and no steps": func() test {
+			brow := new(enginemocks.Browser)
+			c := &engine.Context{
+				Context: context.Background(),
+				TemplateData: &engine.TemplateData{
+					ScriptTemplateData: &v1beta1.ScriptTemplateData{
+						Browser: &v1beta1.BrowserTemplateData{},
+					},
+				},
+				Browser: brow,
+			}
+
+			brow.EXPECT().RefreshPage(mock.Anything, &c.TemplateData.Browser.Content).Return(nil)
+			brow.EXPECT().URL(mock.Anything).Return("derp1.com", nil)
+
+			st := New(nil, nil,
+				WithTickDuration(1*time.Millisecond),
+				WithTimeout(10*time.Millisecond),
+			)
+
+			return test{
+				Stepper:  st,
+				Ctx:      c,
+				Expected: "success",
+			}
+		}(),
 		"chooses correct branch": func() test {
 			act1 := actionutils.NewBranchAction()
 			act2 := actionutils.NewBranchAction()

@@ -7,6 +7,7 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
+	"time"
 )
 
 func NewBranch(id string, b *v1beta1.Action_Branch) (*BranchAction, error) {
@@ -59,6 +60,22 @@ type BranchAction struct {
 	ShouldRunCond *engine.TemplateRenderer
 }
 
+func (b *BranchAction) Eval(c *engine.Context, _ time.Duration) error {
+	if !engine.IsTruthy(b.ShouldRunCond.Render(c.TemplateData)) {
+		return nil
+	}
+
+	for _, v := range b.CompiledSteps {
+		handle := c.Evaluator.Eval(c, v.CompiledAction)
+		<-handle.Done()
+		if err := handle.Cause(); err != nil {
+			return errors.Join(fmt.Errorf("step %s", v.GetId()), err)
+		}
+	}
+
+	return nil
+}
+
 func (b *BranchAction) Statements() []engine.Instruction {
 	return nil
 }
@@ -88,25 +105,6 @@ func (b *BranchAction) Validate() error {
 	}
 
 	return nil
-}
-
-func (b *BranchAction) Act(ctx *engine.Context) error {
-	if !engine.IsTruthy(b.ShouldRunCond.Render(ctx.TemplateData)) {
-		return nil
-	}
-
-	for _, v := range b.CompiledSteps {
-		err := ctx.Evaluator.Eval(ctx, v)
-		if err != nil {
-			return errors.Join(fmt.Errorf("step %s", v.GetId()), err)
-		}
-	}
-
-	return nil
-}
-
-func (b *BranchAction) GetID() string {
-	return b.ID
 }
 
 func (b *BranchAction) ToProto() *v1beta1.Action_Branch {

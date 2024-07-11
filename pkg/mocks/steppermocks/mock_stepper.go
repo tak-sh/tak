@@ -103,19 +103,19 @@ func (_c *Stepper_Jump_Call) RunAndReturn(run func(*stepper.Node)) *Stepper_Jump
 }
 
 // Next provides a mock function with given fields: c
-func (_m *Stepper) Next(c *engine.Context) stepper.Handle {
+func (_m *Stepper) Next(c *engine.Context) stepper.Step {
 	ret := _m.Called(c)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Next")
 	}
 
-	var r0 stepper.Handle
-	if rf, ok := ret.Get(0).(func(*engine.Context) stepper.Handle); ok {
+	var r0 stepper.Step
+	if rf, ok := ret.Get(0).(func(*engine.Context) stepper.Step); ok {
 		r0 = rf(c)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(stepper.Handle)
+			r0 = ret.Get(0).(stepper.Step)
 		}
 	}
 
@@ -140,12 +140,12 @@ func (_c *Stepper_Next_Call) Run(run func(c *engine.Context)) *Stepper_Next_Call
 	return _c
 }
 
-func (_c *Stepper_Next_Call) Return(_a0 stepper.Handle) *Stepper_Next_Call {
+func (_c *Stepper_Next_Call) Return(_a0 stepper.Step) *Stepper_Next_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *Stepper_Next_Call) RunAndReturn(run func(*engine.Context) stepper.Handle) *Stepper_Next_Call {
+func (_c *Stepper_Next_Call) RunAndReturn(run func(*engine.Context) stepper.Step) *Stepper_Next_Call {
 	_c.Call.Return(run)
 	return _c
 }

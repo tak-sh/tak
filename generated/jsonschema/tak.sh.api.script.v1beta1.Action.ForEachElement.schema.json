@@ -1,0 +1,19 @@
+{
+  "$id": "tak.sh.api.script.v1beta1.Action.ForEachElement.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Executes actions for each element that is returned\n by the selector. The Element will be accessible as a\n template expression by the child action.",
+  "properties": {
+    "actions": {
+      "items": {
+        "$ref": "tak.sh.api.script.v1beta1.Action.schema.json"
+      },
+      "type": "array"
+    },
+    "selector": {
+      "type": "string"
+    }
+  },
+  "title": "For Each Element",
+  "type": "object"
+}

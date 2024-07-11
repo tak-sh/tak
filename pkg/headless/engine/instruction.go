@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -23,8 +24,6 @@ type Event interface {
 }
 
 type PathNode interface {
-	GetId() string
-
 	// IsReady lets the Decider know that the PathNode is either  ready
 	// to be taken, or is not ready to be taken.
 	IsReady(c *Context) bool
@@ -37,7 +36,6 @@ type Instruction interface {
 	fmt.Stringer
 	GetId() string
 	Eval(c *Context, to time.Duration) error
-	Cancel(err error)
 }
 
 var _ Event = &NextInstructionEvent{}
@@ -57,7 +55,7 @@ func (c *NextInstructionEvent) eventSigil() {}
 // Evaluator evaluates and tracks Instruction's that have been
 // previously evaluated.
 type Evaluator interface {
-	Eval(c *Context, i Instruction) error
+	Eval(c *Context, i Instruction) EvalHandle
 }
 
 func NewEvaluator(eq EventQueue, to time.Duration) Evaluator {
@@ -74,7 +72,7 @@ type evaluator struct {
 	Timeout time.Duration
 }
 
-func (e *evaluator) Eval(c *Context, i Instruction) (err error) {
+func (e *evaluator) Eval(c *Context, i Instruction) EvalHandle {
 	if e.Q != nil {
 		e.Q <- &NextInstructionEvent{
 			Instruction: i,
@@ -82,13 +80,71 @@ func (e *evaluator) Eval(c *Context, i Instruction) (err error) {
 		}
 	}
 
-	for iter := 0; iter < 1 || errors.Is(err, ErrRetryEval); iter++ {
-		err = i.Eval(c, e.Timeout)
+	return EvalAsync(c, i, e.Timeout)
+}
+
+type EvalHandle interface {
+	Cancel(err error)
+	Done() <-chan struct{}
+	Err() error
+	// Cause can be nil if the context is Done but no error occurred.
+	Cause() error
+	Instruction() Instruction
+}
+
+func newHandle(ctx context.Context, i Instruction) EvalHandle {
+	ctx, cancel := context.WithCancelCause(ctx)
+	return &handle{
+		Can: cancel,
+		Ctx: ctx,
+		Int: i,
+	}
+}
+
+type handle struct {
+	Can context.CancelCauseFunc
+	Ctx context.Context
+	Int Instruction
+}
+
+func (h *handle) Cause() error {
+	err := h.Err()
+	if errors.Is(err, context.Canceled) {
+		return nil
 	}
 
-	if errors.Is(err, ErrSkip) {
-		err = nil
-	}
+	return err
+}
 
-	return
+func (h *handle) Instruction() Instruction {
+	return h.Int
+}
+
+func (h *handle) Err() error {
+	return context.Cause(h.Ctx)
+}
+
+func (h *handle) Cancel(err error) {
+	h.Can(err)
+}
+
+func (h *handle) Done() <-chan struct{} {
+	return h.Ctx.Done()
+}
+
+func EvalAsync(c *Context, act Instruction, to time.Duration) EvalHandle {
+	h := newHandle(c.Context, act)
+	go func() {
+		var err error
+		for iter := 0; iter < 1 || errors.Is(err, ErrRetryEval); iter++ {
+			err = act.Eval(c, to)
+		}
+
+		if errors.Is(err, ErrSkip) {
+			err = nil
+		}
+
+		h.Cancel(err)
+	}()
+	return h
 }

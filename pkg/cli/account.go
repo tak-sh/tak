@@ -75,6 +75,96 @@ func NewAddAccountCommand() *cli.Command {
 	return cmd
 }
 
+func NewListAccountsCommand() *cli.Command {
+	cmd := &cli.Command{
+		Name:        "debug",
+		Aliases:     []string{"de"},
+		Usage:       "Debug an account manifest",
+		Args:        true,
+		ArgsUsage:   "The path to an account file.",
+		Description: "Run and test every step of a new account in an interactive terminal window.",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "skip_login",
+				Usage: "Skip the login step for the account provider.",
+			},
+			&cli.BoolFlag{
+				Name:  "skip_download",
+				Usage: "Skip the download transactions step for the account provider.",
+			},
+		},
+		Action: func(cmd *cli.Context) error {
+			ss := cmd.String("screenshots")
+			fp := cmd.Args().First()
+			logger := contexts.GetLogger(cmd.Context)
+
+			mani, err := provider.LoadFile(fp)
+			if err != nil {
+				return err
+			}
+
+			prov, err := provider.New(mani)
+			if err != nil {
+				return err
+			}
+
+			str := renderer.NewStream()
+			eq := engine.NewEventQueue()
+			stpper := debug.NewFactory()
+
+			scriptComp := ui.NewScriptComponent(prov.GetMetadata().GetName(), str, eq, logger)
+			debugComp := ui.NewDebugComponent(stpper, scriptComp)
+			app := ui.NewApp(debugComp)
+			app.Help.Keys = keyregistry.DebugKeys
+			p := tea.NewProgram(
+				app,
+				tea.WithContext(cmd.Context),
+				tea.WithAltScreen(),
+				tea.WithInput(os.Stdin),
+				tea.WithOutput(os.Stdout),
+			)
+
+			uiCtx, err := ui.Run(cmd.Context, p)
+			if err != nil {
+				logger.Error("Failed to start the UI.", slog.String("err", err.Error()))
+				return errors.Join(except.NewInternal("failed to start the UI"), err)
+			}
+
+			c, err := engine.NewContext(cmd.Context, str, engine.NewEvaluator(eq, 10*time.Second), engine.ContextOpts{
+				ScreenshotDir: ss,
+			})
+			if err != nil {
+				return err
+			}
+
+			chromeOpts := []chromedp.ExecAllocatorOption{
+				chromedp.Flag("headless", false),
+			}
+
+			if cdd := settings.Default.Get().GetChromeDataDirectory(); cdd != "" {
+				chromeOpts = append(chromeOpts, chromedp.UserDataDir(cdd))
+			}
+
+			acctCtx := prov.Run(c, stpper,
+				provider.WithSkipLogin(cmd.Bool("skip_login")),
+				provider.WithSkipDownloadTransactions(cmd.Bool("skip_download")),
+				provider.WithScriptOpts(
+					script.WithChromeOpts(chromeOpts...),
+				),
+			)
+
+			select {
+			case <-uiCtx.Done():
+				return context.Cause(uiCtx)
+			case <-acctCtx.Done():
+				return context.Cause(acctCtx)
+			}
+		},
+	}
+
+	return cmd
+}
+
 func NewDebugAccountCommand() *cli.Command {
 	cmd := &cli.Command{
 		Name:        "debug",

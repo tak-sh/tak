@@ -17,7 +17,7 @@ type Stepper interface {
 	fmt.Stringer
 	// Next checks for either a step.ConditionalSignal or step.Step is ready, or a timeout
 	// (WithTimeout) occurs. These conditions are checked every tick duration (WithTickDuration).
-	Next(c *engine.Context) Handle
+	Next(c *engine.Context) Step
 
 	// Current retrieves the current Node.
 	Current() *Node
@@ -99,7 +99,7 @@ func NewGraph(steps ...*step.Step) *Node {
 	return root
 }
 
-type Handle interface {
+type Step interface {
 	fmt.Stringer
 
 	Node() *Node
@@ -129,7 +129,7 @@ func (s *stepper) Current() *Node {
 }
 
 func (s *stepper) Jump(n *Node) {
-	s.Curr.Val.Cancel(engine.ErrSkip)
+	s.Curr.Cancel(engine.ErrSkip)
 	s.setCurr(n)
 	s.Ticker.Reset(s.Op.Tick)
 }
@@ -142,7 +142,7 @@ func (s *stepper) String() string {
 	return s.Root.String()
 }
 
-func (s *stepper) Next(c *engine.Context) Handle {
+func (s *stepper) Next(c *engine.Context) Step {
 	ctx := c.Context
 	if s.Op.Timeout > 0 {
 		var cancel context.CancelFunc
@@ -180,7 +180,15 @@ func (s *stepper) setCurr(n *Node) {
 	s.Curr = n
 }
 
-func FirstReady(c *engine.Context, signals []*step.ConditionalSignal, children []*Node) Handle {
+func FirstReady(c *engine.Context, signals []*step.ConditionalSignal, children []*Node) Step {
+	if len(signals) == 0 && len(children) == 0 {
+		return NewSignalHandle(&step.ConditionalSignal{
+			ConditionalSignal: &v1beta1.ConditionalSignal{
+				Signal: v1beta1.ConditionalSignal_success,
+			},
+		})
+	}
+
 	for _, v := range signals {
 		if v.IsReady(c) {
 			return NewSignalHandle(v)
@@ -199,19 +207,18 @@ func FirstReady(c *engine.Context, signals []*step.ConditionalSignal, children [
 var _ fmt.Stringer = &Node{}
 
 type Node struct {
-	Val      *step.Step
-	Idx      int
-	Children []*Node
-	Parent   *Node
+	Val *step.Step
+	// If non-nil, the step is currently being evaluated.
+	EvalHandle engine.EvalHandle
+	Idx        int
+	Children   []*Node
+	Parent     *Node
 }
 
-// NavUp follows the Node.Parent until either the Parent is nil (root)
-// or it has navigated upwards n times.
-func NavUp(node *Node, n int) *Node {
-	for i := 0; i < n && node.Parent != nil; i++ {
-		node = node.Parent
+func (n *Node) Cancel(err error) {
+	if n != nil && n.EvalHandle != nil {
+		n.EvalHandle.Cancel(err)
 	}
-	return node
 }
 
 func (n *Node) String() string {
@@ -231,15 +238,24 @@ func (n *Node) String() string {
 	return strings.Join(out, " -> ")
 }
 
-func NewErrHandle(err error) Handle {
+// NavUp follows the Node.Parent until either the Parent is nil (root)
+// or it has navigated upwards n times.
+func NavUp(node *Node, n int) *Node {
+	for i := 0; i < n && node.Parent != nil; i++ {
+		node = node.Parent
+	}
+	return node
+}
+
+func NewErrHandle(err error) Step {
 	return &handle{Error: err}
 }
 
-func NewNodeHandle(n *Node) Handle {
+func NewNodeHandle(n *Node) Step {
 	return &handle{N: n}
 }
 
-func NewSignalHandle(s *step.ConditionalSignal) Handle {
+func NewSignalHandle(s *step.ConditionalSignal) Step {
 	if s.Signal == v1beta1.ConditionalSignal_error {
 		return &handle{Error: errors.New(s.GetMessage()), Sig: s}
 	}

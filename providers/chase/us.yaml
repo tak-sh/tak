@@ -4,8 +4,16 @@ metadata:
 spec:
   list_accounts:
     script:
-      signals:
-        -
+      steps:
+        - action:
+            nav:
+              addr: https://secure.chase.com/web/auth/dashboard#/dashboard/overview
+        - id:
+          action:
+            store:
+              key_vals:
+                -
+
     outputs:
       account:
         type: "{{ each.type }}"

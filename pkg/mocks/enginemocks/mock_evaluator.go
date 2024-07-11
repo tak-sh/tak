@@ -21,18 +21,20 @@ func (_m *Evaluator) EXPECT() *Evaluator_Expecter {
 }
 
 // Eval provides a mock function with given fields: c, i
-func (_m *Evaluator) Eval(c *engine.Context, i engine.Instruction) error {
+func (_m *Evaluator) Eval(c *engine.Context, i engine.Instruction) engine.EvalHandle {
 	ret := _m.Called(c, i)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Eval")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*engine.Context, engine.Instruction) error); ok {
+	var r0 engine.EvalHandle
+	if rf, ok := ret.Get(0).(func(*engine.Context, engine.Instruction) engine.EvalHandle); ok {
 		r0 = rf(c, i)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(engine.EvalHandle)
+		}
 	}
 
 	return r0
@@ -57,12 +59,12 @@ func (_c *Evaluator_Eval_Call) Run(run func(c *engine.Context, i engine.Instruct
 	return _c
 }
 
-func (_c *Evaluator_Eval_Call) Return(_a0 error) *Evaluator_Eval_Call {
+func (_c *Evaluator_Eval_Call) Return(_a0 engine.EvalHandle) *Evaluator_Eval_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *Evaluator_Eval_Call) RunAndReturn(run func(*engine.Context, engine.Instruction) error) *Evaluator_Eval_Call {
+func (_c *Evaluator_Eval_Call) RunAndReturn(run func(*engine.Context, engine.Instruction) engine.EvalHandle) *Evaluator_Eval_Call {
 	_c.Call.Return(run)
 	return _c
 }

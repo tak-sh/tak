@@ -80,12 +80,9 @@ func (s *ScriptComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case OnScriptEventMsg:
 		switch m := t.Event.(type) {
 		case *engine.NextInstructionEvent:
-			switch in := m.Instruction.(type) {
-			case *step.Step:
-				if _, ok := in.CompiledAction.(*step.PromptAction); !ok {
-					s.ProgressMessage = stringutils.Capitalize(in.CompiledAction.String())
-					s.Child = nil
-				}
+			if _, ok := m.Instruction.(*step.PromptAction); !ok {
+				s.ProgressMessage = stringutils.Capitalize(m.String())
+				s.Child = nil
 			}
 		}
 

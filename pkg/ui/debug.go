@@ -6,11 +6,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
+	"github.com/goccy/go-json"
 	"github.com/tak-sh/tak/pkg/debug"
 	"github.com/tak-sh/tak/pkg/headless/engine"
-	"github.com/tak-sh/tak/pkg/headless/step"
-	"github.com/tak-sh/tak/pkg/protoenc"
 	"github.com/tak-sh/tak/pkg/ui/keyregistry"
+	"sigs.k8s.io/yaml"
 	"slices"
 	"strings"
 	"time"
@@ -49,9 +49,7 @@ func (d *DebugComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case OnScriptEventMsg:
 		switch t := t.Event.(type) {
 		case *engine.NextInstructionEvent:
-			if v, ok := t.Instruction.(*step.Step); ok {
-				d.DebugView.setStep(v)
-			}
+			d.DebugView.setInstruction(t.Instruction)
 			d.DebugView.setStepData(t.Context.TemplateData)
 		}
 	case tea.KeyMsg:
@@ -97,22 +95,23 @@ var (
 var _ fmt.Stringer = &DebugView{}
 
 type DebugView struct {
-	Step            *step.Step
-	StepData        *engine.TemplateData
+	Inst            engine.Instruction
+	ActionData      *engine.TemplateData
 	Width           int
 	Height          int
-	stepContent     string
+	instYaml        string
 	stepDataContent string
 }
 
-func (d *DebugView) setStep(s *step.Step) {
-	d.Step = s
-	b, _ := protoenc.MarshalYAML(s)
-	d.stepContent = string(b)
+func (d *DebugView) setInstruction(s engine.Instruction) {
+	d.Inst = s
+	b, _ := json.Marshal(s)
+	ya, _ := yaml.JSONToYAML(b)
+	d.instYaml = string(ya)
 }
 
 func (d *DebugView) setStepData(data *engine.TemplateData) {
-	d.StepData = data
+	d.ActionData = data
 	strs := make([]string, 0, len(data.Step))
 	for k, v := range data.Step {
 		strs = append(strs, fmt.Sprintf("step.%s = %s", k, v))
@@ -123,7 +122,7 @@ func (d *DebugView) setStepData(data *engine.TemplateData) {
 }
 
 func (d *DebugView) String() string {
-	stepStr := d.stepContent
+	stepStr := d.instYaml
 	if stepStr == "" {
 		stepStr = fmt.Sprintf("Press %s to run the next step", strings.Join(keyregistry.DebugKeys.Next.Keys(), "or"))
 	}

@@ -15,7 +15,6 @@ import (
 	"github.com/tak-sh/tak/pkg/renderer"
 	"github.com/tak-sh/tak/pkg/ui/keyregistry"
 	"github.com/tak-sh/tak/pkg/utils/ptr"
-	"golang.org/x/net/html"
 	"google.golang.org/protobuf/proto"
 	"io"
 	"log/slog"
@@ -180,29 +179,9 @@ func addDocToStore(st *engine.TemplateData, sel *goquery.Selection) *engine.Temp
 
 	return st.Merge(&engine.TemplateData{
 		ScriptTemplateData: &v1beta1.ScriptTemplateData{
-			Element: nodeToTemplate(sel.Nodes[0]),
+			Element: engine.NodeToTemplate(sel.Nodes[0]),
 		},
 	})
-}
-
-func nodeToTemplate(node *html.Node) *v1beta1.HTMLNodeTemplateData {
-	out := &v1beta1.HTMLNodeTemplateData{
-		Attrs:   make(map[string]*v1beta1.HTMLNodeTemplateData_Attribute),
-		Element: node.DataAtom.String(),
-	}
-
-	if node.FirstChild != nil {
-		out.Data = node.FirstChild.Data
-	}
-
-	for _, v := range node.Attr {
-		out.Attrs[v.Key] = &v1beta1.HTMLNodeTemplateData_Attribute{
-			Val:       v.Val,
-			Namespace: v.Namespace,
-		}
-	}
-
-	return out
 }
 
 func validateDropdownComponentOption(_ *v1beta1.Component_Dropdown_Option) error {

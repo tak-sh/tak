@@ -7,6 +7,7 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"net/url"
+	"time"
 )
 
 func NewNav(id string, a *v1beta1.Action_Nav) *Nav {
@@ -25,6 +26,21 @@ type Nav struct {
 	ID string
 }
 
+func (n *Nav) GetId() string {
+	return n.ID
+}
+
+func (n *Nav) Eval(c *engine.Context, to time.Duration) error {
+	c, cancel := c.WithTimeout(to)
+	defer cancel()
+	return c.Browser.Navigate(c, n.GetAddr())
+}
+
+func (n *Nav) Cancel(err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (n *Nav) Validate() error {
 	_, err := url.Parse(n.GetAddr())
 	if err != nil {
@@ -36,12 +52,4 @@ func (n *Nav) Validate() error {
 
 func (n *Nav) String() string {
 	return fmt.Sprintf("navigating to %s", n.GetAddr())
-}
-
-func (n *Nav) Act(ctx *engine.Context) error {
-	return ctx.Browser.Navigate(ctx, n.GetAddr())
-}
-
-func (n *Nav) GetID() string {
-	return n.ID
 }

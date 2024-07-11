@@ -19,7 +19,6 @@ import (
 	"github.com/tak-sh/tak/pkg/utils/ptr"
 	"github.com/tak-sh/tak/pkg/validate"
 	"log/slog"
-	"slices"
 	"strconv"
 )
 
@@ -180,17 +179,6 @@ func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts
 }
 
 func New(s *v1beta1.Script) (*Script, error) {
-	if len(s.GetSteps()) == 0 {
-		return nil, except.NewInvalid("at least 1 step required")
-	}
-
-	idx := slices.IndexFunc(s.GetSignals(), func(signal *v1beta1.ConditionalSignal) bool {
-		return signal.GetSignal() == v1beta1.ConditionalSignal_success
-	})
-	if idx < 0 {
-		return nil, except.NewInvalid("at least 1 success condition required")
-	}
-
 	out := &Script{
 		Steps:   make([]*step.Step, 0, len(s.Steps)),
 		Signals: make([]*step.ConditionalSignal, len(s.Signals)),
@@ -269,7 +257,9 @@ func (c *Script) ToProto() *v1beta1.Script {
 }
 
 func (c *Script) evalStep(ctx *engine.Context, st *step.Step, op RunOpts) (cont bool, err error) {
-	err = ctx.Evaluator.Eval(ctx, st)
+	handle := ctx.Evaluator.Eval(ctx, st.CompiledAction)
+	<-handle.Done()
+	err = handle.Cause()
 	cont = err == nil
 	if !cont {
 		return false, err

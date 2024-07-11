@@ -98,7 +98,7 @@ func (s *ScriptTestSuite) TestRun() {
 
 	<-doneCtx.Done()
 
-	s.EqualError(context.Canceled, context.Cause(doneCtx).Error())
+	s.EqualError(context.Cause(doneCtx), context.Canceled.Error())
 	s.Equal("Orange", c.TemplateData.GetStepVal("selected"))
 }
 
@@ -136,6 +136,37 @@ func (s *ScriptTestSuite) TestRunNoSuccessCondition() {
 	<-doneCtx.Done()
 
 	s.EqualError(context.Cause(doneCtx), context.DeadlineExceeded.Error())
+	s.Equal(1, stepsRun)
+}
+
+func (s *ScriptTestSuite) TestRunNoSignals() {
+	ser := newHTMLServer()
+	defer ser.Close()
+
+	sc := &v1beta1.Script{
+		Steps: []*v1beta1.Step{
+			{Action: newNavAction(path.Join(ser.URL, "testdata"))},
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	c, _ := engine.NewContext(ctx, renderer.NewStream(), engine.NewEvaluator(engine.NewEventQueue(), 1*time.Second), engine.ContextOpts{})
+	comp, err := New(sc)
+	if !s.NoError(err) {
+		return
+	}
+
+	stper := stepper.New(comp.Signals, comp.Steps, stepper.WithTimeout(10*time.Millisecond), stepper.WithTickDuration(2*time.Millisecond))
+	stepsRun := 0
+	doneCtx := RunAsync(c, comp, stper, WithPostRunFunc(func(c *engine.Context, s *step.Step) error {
+		stepsRun++
+		return nil
+	}))
+
+	<-doneCtx.Done()
+
+	s.EqualError(context.Cause(doneCtx), context.Canceled.Error())
 	s.Equal(1, stepsRun)
 }
 

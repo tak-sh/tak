@@ -20,51 +20,6 @@ func (_m *PathNode) EXPECT() *PathNode_Expecter {
 	return &PathNode_Expecter{mock: &_m.Mock}
 }
 
-// GetId provides a mock function with given fields:
-func (_m *PathNode) GetId() string {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetId")
-	}
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// PathNode_GetId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetId'
-type PathNode_GetId_Call struct {
-	*mock.Call
-}
-
-// GetId is a helper method to define mock.On call
-func (_e *PathNode_Expecter) GetId() *PathNode_GetId_Call {
-	return &PathNode_GetId_Call{Call: _e.mock.On("GetId")}
-}
-
-func (_c *PathNode_GetId_Call) Run(run func()) *PathNode_GetId_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *PathNode_GetId_Call) Return(_a0 string) *PathNode_GetId_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *PathNode_GetId_Call) RunAndReturn(run func() string) *PathNode_GetId_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // IsReady provides a mock function with given fields: c
 func (_m *PathNode) IsReady(c *engine.Context) bool {
 	ret := _m.Called(c)

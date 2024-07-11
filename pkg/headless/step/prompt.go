@@ -8,16 +8,8 @@ import (
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
 	"github.com/tak-sh/tak/pkg/validate"
+	"time"
 )
-
-var _ Action = &PromptAction{}
-var _ grpcutils.ProtoWrapper[*v1beta1.Action_PromptUser] = &PromptAction{}
-
-type PromptAction struct {
-	prompt *v1beta1.Action_PromptUser
-	Prompt *Prompt
-	ID     string
-}
 
 func NewPromptAction(id string, p *v1beta1.Action_PromptUser) (*PromptAction, error) {
 	out := &PromptAction{
@@ -32,6 +24,39 @@ func NewPromptAction(id string, p *v1beta1.Action_PromptUser) (*PromptAction, er
 	}
 
 	return out, nil
+}
+
+var _ Action = &PromptAction{}
+var _ grpcutils.ProtoWrapper[*v1beta1.Action_PromptUser] = &PromptAction{}
+
+type PromptAction struct {
+	prompt *v1beta1.Action_PromptUser
+	Prompt *Prompt
+	ID     string
+}
+
+func (p *PromptAction) GetId() string {
+	return p.ID
+}
+
+func (p *PromptAction) Eval(c *engine.Context, _ time.Duration) error {
+	model := p.Prompt.Component.Render(c, &component.Props{
+		ID:          p.GetId(),
+		Title:       component.TitleStyle.Render(p.prompt.GetPrompt().GetTitle()),
+		Description: component.DescriptionStyle.Render(p.prompt.GetPrompt().GetDescription()),
+	})
+	if model == nil {
+		return nil
+	}
+
+	v, err := c.Stream.Render(c, model)
+	if err != nil {
+		return err
+	}
+
+	c.TemplateData.SetStepVal(p.ID, GetValueString(v.Value))
+
+	return nil
 }
 
 func (p *PromptAction) Validate() error {
@@ -49,30 +74,6 @@ func (p *PromptAction) String() string {
 		prmpt = p.prompt.GetPrompt().GetDescription()
 	}
 	return fmt.Sprintf("asking the user %s", prmpt)
-}
-
-func (p *PromptAction) Act(ctx *engine.Context) error {
-	model := p.Prompt.Component.Render(ctx, &component.Props{
-		ID:          p.GetID(),
-		Title:       component.TitleStyle.Render(p.prompt.GetPrompt().GetTitle()),
-		Description: component.DescriptionStyle.Render(p.prompt.GetPrompt().GetDescription()),
-	})
-	if model == nil {
-		return nil
-	}
-
-	v, err := ctx.Stream.Render(ctx, model)
-	if err != nil {
-		return err
-	}
-
-	ctx.TemplateData.SetStepVal(p.ID, GetValueString(v.Value))
-
-	return nil
-}
-
-func (p *PromptAction) GetID() string {
-	return p.ID
 }
 
 func (p *PromptAction) ToProto() *v1beta1.Action_PromptUser {
