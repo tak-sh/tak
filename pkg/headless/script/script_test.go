@@ -1,10 +1,8 @@
 package script
 
 import (
-	"bytes"
 	"context"
 	"embed"
-	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chromedp/chromedp"
 	"github.com/stretchr/testify/suite"
@@ -40,7 +38,7 @@ func (s *ScriptTestSuite) TestRun() {
 			{Id: ptr.Ptr("selected"), Action: newPromptAction(&v1beta1.Prompt{
 				Title: "fruit",
 				Component: newFromDropdownComponent(newEachSelector("table > tbody > tr", "td:first-child"), &v1beta1.Component_Dropdown_Option{
-					Value: "{{ element.data }}",
+					Value: "{{ element.text }}",
 				}),
 			})},
 			{Id: ptr.Ptr("input"), Action: newInput("input[id='test_input1']", "{{ step.selected }}")},
@@ -225,14 +223,6 @@ func newNavAction(url string) *v1beta1.Action {
 	return &v1beta1.Action{
 		Nav: &v1beta1.Action_Nav{Addr: url},
 	}
-}
-
-func TestName(t *testing.T) {
-	b := []byte{}
-	//_, err := os.Stdin.Read(b)
-
-	_, err := bytes.NewBuffer(nil).Read(b)
-	fmt.Println(err)
 }
 
 func TestScriptTestSuite(t *testing.T) {

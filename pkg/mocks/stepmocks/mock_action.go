@@ -6,6 +6,8 @@ import (
 	mock "github.com/stretchr/testify/mock"
 	engine "github.com/tak-sh/tak/pkg/headless/engine"
 
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+
 	time "time"
 )
 
@@ -110,6 +112,53 @@ func (_c *Action_GetId_Call) Return(_a0 string) *Action_GetId_Call {
 }
 
 func (_c *Action_GetId_Call) RunAndReturn(run func() string) *Action_GetId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Message provides a mock function with given fields:
+func (_m *Action) Message() protoreflect.ProtoMessage {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Message")
+	}
+
+	var r0 protoreflect.ProtoMessage
+	if rf, ok := ret.Get(0).(func() protoreflect.ProtoMessage); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(protoreflect.ProtoMessage)
+		}
+	}
+
+	return r0
+}
+
+// Action_Message_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Message'
+type Action_Message_Call struct {
+	*mock.Call
+}
+
+// Message is a helper method to define mock.On call
+func (_e *Action_Expecter) Message() *Action_Message_Call {
+	return &Action_Message_Call{Call: _e.mock.On("Message")}
+}
+
+func (_c *Action_Message_Call) Run(run func()) *Action_Message_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Action_Message_Call) Return(_a0 protoreflect.ProtoMessage) *Action_Message_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Action_Message_Call) RunAndReturn(run func() protoreflect.ProtoMessage) *Action_Message_Call {
 	_c.Call.Return(run)
 	return _c
 }

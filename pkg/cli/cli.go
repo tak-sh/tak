@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/settings"
 	"github.com/urfave/cli/v2"
@@ -73,4 +74,28 @@ func New(version string) *cli.App {
 	}
 
 	return app
+}
+
+type EnumValue struct {
+	Enum     []string
+	Default  string
+	selected string
+}
+
+func (e *EnumValue) Set(value string) error {
+	for _, enum := range e.Enum {
+		if enum == value {
+			e.selected = value
+			return nil
+		}
+	}
+
+	return fmt.Errorf("allowed values are %s", strings.Join(e.Enum, ", "))
+}
+
+func (e EnumValue) String() string {
+	if e.selected == "" {
+		return e.Default
+	}
+	return e.selected
 }

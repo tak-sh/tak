@@ -14,13 +14,13 @@ import (
 
 type OnRenderFunc func(id string)
 
-func NewScriptComponent(accountName string, str renderer.Stream, eq engine.EventQueue, logger *slog.Logger) *ScriptComponent {
+func NewScriptComponent(defaultProgMsg string, str renderer.Stream, eq engine.EventQueue, logger *slog.Logger) *ScriptComponent {
 	out := &ScriptComponent{
 		Stream:                 str,
 		ScriptEvents:           eq,
 		Logger:                 logger,
 		Spinner:                NewSpinner(),
-		DefaultProgressMessage: fmt.Sprintf("Adding your %s account...", accountName),
+		DefaultProgressMessage: defaultProgMsg,
 		showSpinner:            true,
 	}
 
@@ -77,7 +77,7 @@ func (s *ScriptComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RenderModelMsg:
 		s.Child = t.Model
 		cmds = append(cmds, s.Child.Init(), s.onRender(t.Model), s.waitRenderQueueMsg())
-	case OnScriptEventMsg:
+	case OnEventMsg:
 		switch m := t.Event.(type) {
 		case *engine.NextInstructionEvent:
 			if _, ok := m.Instruction.(*step.PromptAction); !ok {
@@ -139,7 +139,7 @@ func (s *ScriptComponent) waitEventQueueMsg() tea.Cmd {
 			s.Logger.Info("Event queue has closed.")
 			return tea.Quit()
 		}
-		return OnScriptEventMsg{Event: e}
+		return OnEventMsg{Event: e}
 	}
 }
 
@@ -151,10 +151,10 @@ func (r RenderModelMsg) String() string {
 	return fmt.Sprintf("display %s component", r.Model.GetId())
 }
 
-type OnScriptEventMsg struct {
+type OnEventMsg struct {
 	Event engine.Event
 }
 
-func (o OnScriptEventMsg) String() string {
+func (o OnEventMsg) String() string {
 	return o.Event.String()
 }

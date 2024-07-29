@@ -36,11 +36,16 @@ message DownloadTransactionsSpec {
 }
 
 message ListAccountsSpec {
+  message AccountMapping {
+    string name = 1;
+    // Corresponds to the Account.Type.Enum
+    string type = 2;
+  }
+
   message OutputsSchemaMapping {
-    Account account = 1;
+    AccountMapping account = 1;
     // Iterate through all fields of the key. These values will be made
-    // available to the account field via the `each.key` and `each.value`
-    // fields.
+    // available to the account field via the `each.[field name]` field.
     string for_each = 2 [json_name = "for_each"];
   }
 

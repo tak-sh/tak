@@ -2,21 +2,37 @@ metadata:
   name: chase
   version: v1beta1
 spec:
+  download_transactions:
+    script: { }
+  #<mds-button width-type="content" text="BUS COMPLETE CHK (...2257)" icon-position="trailing" variant="tertiary" small="false" disable-live-region="false" inverse="false" tooltip-alignment="center" tooltip-pointer-placement="8" tooltip-placement="below" icon-type="ico_chevron_right" inactive="false" icon-accessible-description="" tab-focusable="true" type="button" is-loading="false" id="accounts-name-link-button-831256474" data-testid="accounts-name-link-button-831256474" accessible-text="" class="mds-button--bcb"></mds-button>
   list_accounts:
+    outputs:
+      for_each: account_names.accounts
+      account:
+        type: bank
+        name: "{{ each.value }}"
     script:
       steps:
         - action:
             nav:
               addr: https://secure.chase.com/web/auth/dashboard#/dashboard/overview
-        - id:
+        - id: account_names
           action:
+            for_each_element:
+              actions:
+                - store:
+                    key_vals:
+                      - key: |
+                          accounts.{{ element.attrs.text.val }}
+                        value: |
+                          {{ element.attrs.text.val }}
+              selector: |
+                mds-button[id*='accounts-name-link-button']
+        - action:
             store:
               key_vals:
-                -
-
-    outputs:
-      account:
-        type: "{{ each.type }}"
+                - value: derp
+                  key: "123"
   login:
     script:
       signals:
@@ -74,7 +90,7 @@ spec:
                                 iterator: "span[id*='list-item__input-label-optionsList-1']"
                               mapper:
                                 value: "{{ element.attrs.id.val }}"
-                                text: "{{ element.data }}"
+                                text: "{{ element.text }}"
                 - action:
                     mouse_click:
                       selector: "span[id='{{ step.mfa-select.selected }}']"
@@ -125,7 +141,7 @@ spec:
                                 iterator: "span[id*='container-primary']"
                               mapper:
                                 value: "{{ element.attrs.id.val }}"
-                                text: "{{ element.data }}"
+                                text: "{{ element.text }}"
                 - action:
                     mouse_click:
                       selector: "a > span[id='{{ step.mfa.2fa }}']"

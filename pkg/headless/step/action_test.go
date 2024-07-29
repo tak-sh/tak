@@ -90,7 +90,7 @@ func (a *ActionTestSuite) TestActWithBrowser() {
 	}
 
 	tests := map[string]test{
-		"asd": func() test {
+		"test for each": func() test {
 			c, _ := engine.NewContext(context.Background(), nil, nil, engine.ContextOpts{})
 			return test{
 				Validate: func(desc string) {
@@ -108,7 +108,7 @@ func (a *ActionTestSuite) TestActWithBrowser() {
 						Actions: []*v1beta1.Action{
 							{Store: &v1beta1.Action_Store{
 								KeyVals: []*v1beta1.KeyVal{
-									{Key: "{{element.data}}", Value: "{{element.attrs.class.val}}"},
+									{Key: "{{element.text}}", Value: "{{element.attrs.class.val}}"},
 								},
 							}},
 						},

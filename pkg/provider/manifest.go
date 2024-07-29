@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/eddieowens/opts"
 	"github.com/tak-sh/tak/generated/go/api/provider/v1beta1"
-	"github.com/tak-sh/tak/pkg/contexts"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/headless/script"
@@ -13,108 +12,126 @@ import (
 	"github.com/tak-sh/tak/pkg/protoenc"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
 	"github.com/tak-sh/tak/pkg/validate"
-	"log/slog"
 	"os"
 	"path/filepath"
 )
 
-func New(prov *v1beta1.Manifest) (a *Manifest, err error) {
+func New(c *engine.Context, prov *v1beta1.Manifest, s stepper.Factory, o ...opts.Opt[script.RunOpts]) (a *Manifest, err error) {
 	a = &Manifest{
-		Manifest: prov,
+		Manifest:       prov,
+		Ctx:            c,
+		Opts:           o,
+		StepperFactory: s,
 	}
 
-	a.Login, err = script.New(a.GetSpec().GetLogin().GetScript())
+	a.LoginScript, err = script.New(a.GetSpec().GetLogin().GetScript())
 	if err != nil {
-		return nil, errors.Join(errors.New("login script"), err)
+		return nil, errors.Join(errors.New("login field"), err)
 	}
 
-	a.DownloadTransactions, err = script.New(a.GetSpec().GetDownloadTransactions().GetScript())
+	a.DownloadTransactionsScript, err = script.New(a.GetSpec().GetDownloadTransactions().GetScript())
 	if err != nil {
-		return nil, errors.Join(errors.New("download transactions script"), err)
+		return nil, errors.Join(errors.New("download_transactions field"), err)
+	}
+
+	a.ListAccountsScript, err = script.New(a.GetSpec().GetListAccounts().GetScript())
+	if err != nil {
+		return nil, errors.Join(errors.New("list_accounts field"), err)
+	}
+
+	a.listAccountMapping, err = newAccountMapping(a.GetSpec().GetListAccounts().GetOutputs().GetAccount())
+	if err != nil {
+		return nil, errors.Join(errors.New(`"account" field for "list_accounts" spec`), err)
 	}
 
 	return a, nil
 }
 
-type RunOpts struct {
-	ScriptOpts               []opts.Opt[script.RunOpts]
-	SkipLogin                bool
-	SkipDownloadTransactions bool
-}
-
-func (r RunOpts) DefaultOptions() RunOpts {
-	return RunOpts{}
-}
-
-func WithSkipLogin(b bool) opts.Opt[RunOpts] {
-	return func(r *RunOpts) {
-		r.SkipLogin = b
-	}
-}
-
-func WithSkipDownloadTransactions(b bool) opts.Opt[RunOpts] {
-	return func(r *RunOpts) {
-		r.SkipDownloadTransactions = b
-	}
-}
-
-func WithScriptOpts(o ...opts.Opt[script.RunOpts]) opts.Opt[RunOpts] {
-	return func(r *RunOpts) {
-		r.ScriptOpts = append(r.ScriptOpts, o...)
-	}
-}
-
 var _ grpcutils.ProtoWrapper[*v1beta1.Manifest] = &Manifest{}
 var _ validate.Validator = &Manifest{}
+var _ Provider = &Manifest{}
 
 type Manifest struct {
 	*v1beta1.Manifest
-	Login                *script.Script
-	DownloadTransactions *script.Script
-	ListAccounts         *script.Script
+	LoginScript                *script.Script
+	DownloadTransactionsScript *script.Script
+	ListAccountsScript         *script.Script
+
+	StepperFactory stepper.Factory
+	Opts           []opts.Opt[script.RunOpts]
+	Ctx            *engine.Context
+
+	listAccountMapping *AccountMapping
 }
 
-func (p *Manifest) Run(c *engine.Context, stepperFact stepper.Factory, o ...opts.Opt[RunOpts]) context.Context {
-	ctx, cancel := context.WithCancelCause(c.Context)
-	op := opts.DefaultApply(o...)
+func (p *Manifest) ListAccounts(ctx context.Context) ([]*v1beta1.Account, error) {
+	c := p.Ctx.WithContext(ctx)
+	stper := p.StepperFactory.NewStepper(p.ListAccountsScript.Signals, p.ListAccountsScript.Steps)
 
-	go func() {
-		var err error
-		defer func() {
-			cancel(err)
-		}()
-		logger := contexts.GetLogger(c.Context)
-		if !op.SkipLogin {
-			stper := stepperFact.NewStepper(p.Login.Signals, p.Login.Steps)
-			err = script.Run(c, p.Login, stper, op.ScriptOpts...)
-			if err != nil {
-				logger.Error("Failed to run login script.", slog.String("err", err.Error()))
-				return
-			}
-		}
+	p.Ctx.Evaluator.EventQueue() <- &engine.ChangeOperationEvent{
+		To: engine.OperationListAccounts,
+	}
 
-		if !op.SkipDownloadTransactions {
-			stper := stepperFact.NewStepper(p.DownloadTransactions.Signals, p.DownloadTransactions.Steps)
-			err = script.Run(c, p.DownloadTransactions, stper, op.ScriptOpts...)
-			if err != nil {
-				logger.Error("Failed to run download transactions script.", slog.String("err", err.Error()))
-				return
-			}
-		}
-	}()
+	err := script.Run(c, p.ListAccountsScript, stper, p.Opts...)
+	if err != nil {
+		return nil, err
+	}
 
-	return ctx
+	accts := make([]*v1beta1.Account, 0)
+	c.TemplateData.ForEach(p.GetSpec().GetListAccounts().GetOutputs().GetForEach(), func(r *engine.TemplateData) {
+		accts = append(accts, p.listAccountMapping.Render(r))
+	})
+
+	return accts, nil
+}
+
+func (p *Manifest) Login(ctx context.Context) error {
+	c := p.Ctx.WithContext(ctx)
+	stper := p.StepperFactory.NewStepper(p.LoginScript.Signals, p.LoginScript.Steps)
+
+	p.Ctx.Evaluator.EventQueue() <- &engine.ChangeOperationEvent{
+		To: engine.OperationLogin,
+	}
+
+	err := script.Run(c, p.LoginScript, stper, p.Opts...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Manifest) DownloadTransactions(ctx context.Context, acctName string) error {
+	c := p.Ctx.WithContext(ctx)
+	stper := p.StepperFactory.NewStepper(p.DownloadTransactionsScript.Signals, p.DownloadTransactionsScript.Steps)
+
+	p.Ctx.Evaluator.EventQueue() <- &engine.ChangeOperationEvent{
+		To:      engine.OperationDownloadTransactions,
+		Message: "for account " + acctName,
+	}
+
+	err := script.Run(c, p.DownloadTransactionsScript, stper, p.Opts...)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *Manifest) Validate() error {
-	err := p.Login.Validate()
+	err := p.LoginScript.Validate()
 	if err != nil {
 		return errors.Join(errors.New("login script"), err)
 	}
 
-	err = p.DownloadTransactions.Validate()
+	err = p.DownloadTransactionsScript.Validate()
 	if err != nil {
 		return errors.Join(errors.New("download transactions script"), err)
+	}
+
+	err = p.ListAccountsScript.Validate()
+	if err != nil {
+		return errors.Join(errors.New("list accounts script"), err)
 	}
 
 	return nil

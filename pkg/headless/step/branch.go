@@ -7,6 +7,7 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 
@@ -58,6 +59,10 @@ type BranchAction struct {
 	ID            string
 	CompiledSteps []*Step
 	ShouldRunCond *engine.TemplateRenderer
+}
+
+func (b *BranchAction) Message() proto.Message {
+	return b.Action_Branch
 }
 
 func (b *BranchAction) Eval(c *engine.Context, _ time.Duration) error {

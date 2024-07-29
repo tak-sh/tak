@@ -6,6 +6,7 @@ import (
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
+	"google.golang.org/protobuf/proto"
 	"strings"
 	"time"
 )
@@ -16,6 +17,10 @@ type StoreAction struct {
 	*v1beta1.Action_Store
 	CompiledKeyVals []*KeyVal
 	ID              string
+}
+
+func (s *StoreAction) Message() proto.Message {
+	return s.Action_Store
 }
 
 func (s *StoreAction) GetId() string {

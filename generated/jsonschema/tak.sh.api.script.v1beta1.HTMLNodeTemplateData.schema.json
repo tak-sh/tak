@@ -13,12 +13,22 @@
       },
       "type": "object"
     },
+    "children": {
+      "items": {
+        "$ref": "tak.sh.api.script.v1beta1.HTMLNodeTemplateData.schema.json"
+      },
+      "type": "array"
+    },
     "data": {
-      "description": "The stringified child of the element.",
+      "description": "The stringified version of the node.",
       "type": "string"
     },
     "element": {
       "description": "The element type e.g. span",
+      "type": "string"
+    },
+    "text": {
+      "description": "The stringified child of the element.",
       "type": "string"
     }
   },

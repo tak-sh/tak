@@ -3,9 +3,11 @@ package step
 import (
 	"errors"
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 
@@ -42,6 +44,10 @@ type ForEachElementAction struct {
 	CompiledActions  []Action
 }
 
+func (f *ForEachElementAction) Message() proto.Message {
+	return f.Action_ForEachElement
+}
+
 func (f *ForEachElementAction) GetId() string {
 	return f.ID
 }
@@ -53,20 +59,20 @@ func (f *ForEachElementAction) Eval(c *engine.Context, to time.Duration) error {
 	}
 
 	co := c.Copy()
-	for _, v := range cont {
+	cont.Each(func(i int, selection *goquery.Selection) {
 		co.TemplateData = c.TemplateData.Merge(&engine.TemplateData{ScriptTemplateData: &v1beta1.ScriptTemplateData{
-			Element: v,
+			Element: engine.NodeToTemplate(selection.Nodes[0]),
 		}})
 
 		for _, a := range f.CompiledActions {
 			err = a.Eval(co, to)
 			if err != nil {
-				return err
+				return
 			}
 		}
-	}
+	})
 
-	return nil
+	return err
 }
 
 func (f *ForEachElementAction) String() string {

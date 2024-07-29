@@ -4,10 +4,10 @@
   "additionalProperties": false,
   "properties": {
     "account": {
-      "$ref": "tak.sh.api.provider.v1beta1.Account.schema.json"
+      "$ref": "tak.sh.api.provider.v1beta1.ListAccountsSpec.AccountMapping.schema.json"
     },
     "for_each": {
-      "description": "Iterate through all fields of the key. These values will be made\n available to the account field via the `each.key` and `each.value`\n fields.",
+      "description": "Iterate through all fields of the key. These values will be made\n available to the account field via the `each.[field name]` field.",
       "type": "string"
     }
   },

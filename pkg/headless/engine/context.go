@@ -14,6 +14,7 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/renderer"
 	"github.com/tak-sh/tak/pkg/utils/collection"
+	"github.com/tak-sh/tak/pkg/utils/ptr"
 	"golang.org/x/net/html"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -40,7 +41,7 @@ type Browser interface {
 	Exists(ctx context.Context, sel string) bool
 	Navigate(ctx context.Context, addr string) error
 	WriteInput(ctx context.Context, selector, content string) error
-	Content(ctx context.Context, selector string) ([]*v1beta1.HTMLNodeTemplateData, error)
+	Content(ctx context.Context, selector string) (*goquery.Document, error)
 }
 
 type ContextOpts struct {
@@ -207,7 +208,7 @@ func NodeToTemplate(node *html.Node) *v1beta1.HTMLNodeTemplateData {
 	}
 
 	if node.FirstChild != nil {
-		out.Data = node.FirstChild.Data
+		out.Text = ptr.PtrOrNil(node.FirstChild.Data)
 	}
 
 	for _, v := range node.Attr {
@@ -216,6 +217,10 @@ func NodeToTemplate(node *html.Node) *v1beta1.HTMLNodeTemplateData {
 			Namespace: v.Namespace,
 		}
 	}
+
+	var data bytes.Buffer
+	_ = html.Render(&data, node)
+	out.Data = data.String()
 
 	return out
 }
@@ -257,7 +262,7 @@ func (t *TemplateData) SetStepVal(id, val string) {
 	if t.GetStep() == nil {
 		t.Step = map[string]string{}
 	}
-	t.Step[id] = val
+	t.Step[strings.TrimSpace(id)] = strings.TrimSpace(val)
 }
 
 func (t *TemplateData) Merge(m ...*TemplateData) *TemplateData {
@@ -385,36 +390,26 @@ func NewBrowser() Browser {
 type browser struct {
 }
 
-func (p *browser) Content(ctx context.Context, selector string) ([]*v1beta1.HTMLNodeTemplateData, error) {
-	out := make([]*v1beta1.HTMLNodeTemplateData, 0)
-	var nodes []*cdp.Node
-	err := chromedp.Nodes(selector, &nodes).Do(ctx)
+func (p *browser) Content(ctx context.Context, selector string) (*goquery.Document, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	var content string
+	err := chromedp.OuterHTML("html", &content).Do(ctx)
 	if err != nil {
-		return nil, err
-	}
-	for _, v := range nodes {
-		a := &v1beta1.HTMLNodeTemplateData{
-			Data:    v.NodeValue,
-			Attrs:   map[string]*v1beta1.HTMLNodeTemplateData_Attribute{},
-			Element: v.LocalName,
-		}
-
-		for i := 0; i < len(v.Attributes); i += 2 {
-			name := v.Attributes[i]
-			val := v.Attributes[i+1]
-			a.Attrs[name] = &v1beta1.HTMLNodeTemplateData_Attribute{Val: val}
-		}
-
-		for _, v := range v.Children {
-			if v.NodeType == cdp.NodeTypeText {
-				a.Data = v.NodeValue
-			}
-		}
-
-		out = append(out, a)
+		return nil, errors.Join(except.NewInvalid("no elements match %s", selector), err)
 	}
 
-	return out, err
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(content))
+	if err != nil {
+		return nil, errors.Join(except.NewInvalid("no elements match %s", selector), err)
+	}
+
+	d := &goquery.Document{
+		Selection: doc.Find(selector),
+		Url:       doc.Url,
+	}
+
+	return d, nil
 }
 
 func (p *browser) WriteInput(ctx context.Context, selector, content string) error {

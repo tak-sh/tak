@@ -69,6 +69,53 @@ func (_c *Evaluator_Eval_Call) RunAndReturn(run func(*engine.Context, engine.Ins
 	return _c
 }
 
+// EventQueue provides a mock function with given fields:
+func (_m *Evaluator) EventQueue() engine.EventQueue {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for EventQueue")
+	}
+
+	var r0 engine.EventQueue
+	if rf, ok := ret.Get(0).(func() engine.EventQueue); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(engine.EventQueue)
+		}
+	}
+
+	return r0
+}
+
+// Evaluator_EventQueue_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EventQueue'
+type Evaluator_EventQueue_Call struct {
+	*mock.Call
+}
+
+// EventQueue is a helper method to define mock.On call
+func (_e *Evaluator_Expecter) EventQueue() *Evaluator_EventQueue_Call {
+	return &Evaluator_EventQueue_Call{Call: _e.mock.On("EventQueue")}
+}
+
+func (_c *Evaluator_EventQueue_Call) Run(run func()) *Evaluator_EventQueue_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *Evaluator_EventQueue_Call) Return(_a0 engine.EventQueue) *Evaluator_EventQueue_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Evaluator_EventQueue_Call) RunAndReturn(run func() engine.EventQueue) *Evaluator_EventQueue_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewEvaluator creates a new instance of Evaluator. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewEvaluator(t interface {

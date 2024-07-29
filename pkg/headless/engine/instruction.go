@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/protobuf/proto"
+	"strings"
 	"time"
 )
 
@@ -11,6 +13,26 @@ var (
 	ErrRetryEval = errors.New("retry eval")
 	ErrSkip      = errors.New("skip eval")
 )
+
+type Operation string
+
+const (
+	OperationListAccounts         Operation = "list_accounts"
+	OperationLogin                Operation = "login"
+	OperationDownloadTransactions Operation = "download_transactions"
+)
+
+func (o Operation) ActionString() string {
+	switch o {
+	case OperationLogin:
+		return "logging in"
+	case OperationDownloadTransactions:
+		return "downloading transactions"
+	case OperationListAccounts:
+		return "listing accounts"
+	}
+	return ""
+}
 
 type EventQueue chan Event
 
@@ -34,9 +56,29 @@ type PathNode interface {
 // rather than calling it directly.
 type Instruction interface {
 	fmt.Stringer
+	Message() proto.Message
 	GetId() string
 	Eval(c *Context, to time.Duration) error
 }
+
+var _ Event = &ChangeOperationEvent{}
+
+type ChangeOperationEvent struct {
+	To      Operation
+	Message string
+}
+
+func (c *ChangeOperationEvent) String() string {
+	sb := strings.Builder{}
+	sb.WriteString(c.To.ActionString())
+	if c.Message != "" {
+		sb.WriteString(" ")
+		sb.WriteString(c.Message)
+	}
+	return sb.String()
+}
+
+func (c *ChangeOperationEvent) eventSigil() {}
 
 var _ Event = &NextInstructionEvent{}
 
@@ -56,6 +98,7 @@ func (c *NextInstructionEvent) eventSigil() {}
 // previously evaluated.
 type Evaluator interface {
 	Eval(c *Context, i Instruction) EvalHandle
+	EventQueue() EventQueue
 }
 
 func NewEvaluator(eq EventQueue, to time.Duration) Evaluator {
@@ -70,6 +113,10 @@ func NewEvaluator(eq EventQueue, to time.Duration) Evaluator {
 type evaluator struct {
 	Q       EventQueue
 	Timeout time.Duration
+}
+
+func (e *evaluator) EventQueue() EventQueue {
+	return e.Q
 }
 
 func (e *evaluator) Eval(c *Context, i Instruction) EvalHandle {

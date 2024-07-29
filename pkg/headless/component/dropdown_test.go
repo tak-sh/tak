@@ -33,7 +33,7 @@ func (d *DropdownTestSuite) TestRender() {
 					},
 					Mapper: &v1beta1.Component_Dropdown_Option{
 						Value: "{{ element.attrs.id.val }}",
-						Text:  ptr.Ptr("{{ element.data }}"),
+						Text:  ptr.Ptr("{{ element.text }}"),
 					},
 				},
 				Merge: []*v1beta1.Component_Dropdown_OptionMerge{

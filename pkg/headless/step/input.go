@@ -7,6 +7,7 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 
@@ -33,6 +34,10 @@ type Input struct {
 	ID string
 	*v1beta1.Action_Input
 	ValueTemp *engine.TemplateRenderer
+}
+
+func (i *Input) Message() proto.Message {
+	return i.Action_Input
 }
 
 func (i *Input) Eval(c *engine.Context, to time.Duration) error {

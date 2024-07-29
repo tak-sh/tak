@@ -8,6 +8,7 @@ import (
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 
@@ -36,6 +37,10 @@ type MouseClick struct {
 	ID           string
 	Query        engine.DOMQuery
 	SelectorTemp *engine.TemplateRenderer
+}
+
+func (m *MouseClick) Message() proto.Message {
+	return m.Action_MouseClick
 }
 
 func (m *MouseClick) Eval(c *engine.Context, to time.Duration) error {

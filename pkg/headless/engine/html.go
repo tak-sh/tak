@@ -3,7 +3,9 @@ package engine
 import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
+	"github.com/tak-sh/tak/pkg/utils/ptr"
 	"strings"
 )
 
@@ -75,4 +77,28 @@ func (s StringSelector) String() string {
 
 func (s StringSelector) Query(doc *goquery.Selection) []*goquery.Selection {
 	return []*goquery.Selection{doc.Find(string(s))}
+}
+
+func FromChromeDev(node *cdp.Node) *v1beta1.HTMLNodeTemplateData {
+	a := &v1beta1.HTMLNodeTemplateData{
+		Attrs:    map[string]*v1beta1.HTMLNodeTemplateData_Attribute{},
+		Element:  node.LocalName,
+		Children: make([]*v1beta1.HTMLNodeTemplateData, 0, node.ChildNodeCount),
+	}
+
+	for i := 0; i < len(node.Attributes); i += 2 {
+		name := node.Attributes[i]
+		val := node.Attributes[i+1]
+		a.Attrs[name] = &v1beta1.HTMLNodeTemplateData_Attribute{Val: val}
+	}
+
+	for _, v := range node.Children {
+		if v.NodeType == cdp.NodeTypeText {
+			a.Text = ptr.PtrOrNil(v.NodeValue)
+		} else {
+			a.Children = append(a.Children, FromChromeDev(v))
+		}
+	}
+
+	return a
 }

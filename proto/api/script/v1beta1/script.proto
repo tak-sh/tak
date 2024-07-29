@@ -199,13 +199,18 @@ message HTMLNodeTemplateData {
   }
 
   // The stringified child of the element.
-  string data = 1;
+  optional string text = 1;
 
   // The attributes on the HTML node.
   map<string, Attribute> attrs = 2;
 
   // The element type e.g. span
   string element = 3;
+
+  repeated HTMLNodeTemplateData children = 4;
+
+  // The stringified version of the node.
+  string data = 5;
 }
 
 message BrowserTemplateData {

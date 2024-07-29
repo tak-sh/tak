@@ -6,11 +6,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
-	"github.com/goccy/go-json"
 	"github.com/tak-sh/tak/pkg/debug"
 	"github.com/tak-sh/tak/pkg/headless/engine"
+	"github.com/tak-sh/tak/pkg/protoenc"
 	"github.com/tak-sh/tak/pkg/ui/keyregistry"
-	"sigs.k8s.io/yaml"
 	"slices"
 	"strings"
 	"time"
@@ -46,7 +45,7 @@ func (d *DebugComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		d.DebugView.Width = t.Width
 		d.DebugView.Height = t.Height
-	case OnScriptEventMsg:
+	case OnEventMsg:
 		switch t := t.Event.(type) {
 		case *engine.NextInstructionEvent:
 			d.DebugView.setInstruction(t.Instruction)
@@ -105,9 +104,8 @@ type DebugView struct {
 
 func (d *DebugView) setInstruction(s engine.Instruction) {
 	d.Inst = s
-	b, _ := json.Marshal(s)
-	ya, _ := yaml.JSONToYAML(b)
-	d.instYaml = string(ya)
+	b, _ := protoenc.MarshalYAML(s.Message())
+	d.instYaml = string(b)
 }
 
 func (d *DebugView) setStepData(data *engine.TemplateData) {
@@ -153,7 +151,7 @@ func NewUpdateHistory(limit int) *UpdateHistory {
 func DefaultUpdateFilter() MessageFilter {
 	return func(msg tea.Msg) bool {
 		switch msg.(type) {
-		case OnScriptEventMsg, tea.KeyMsg, RenderModelMsg:
+		case OnEventMsg, tea.KeyMsg, RenderModelMsg:
 			return true
 		}
 		return false

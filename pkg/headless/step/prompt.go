@@ -8,6 +8,7 @@ import (
 	"github.com/tak-sh/tak/pkg/headless/engine"
 	"github.com/tak-sh/tak/pkg/utils/grpcutils"
 	"github.com/tak-sh/tak/pkg/validate"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 
@@ -33,6 +34,10 @@ type PromptAction struct {
 	prompt *v1beta1.Action_PromptUser
 	Prompt *Prompt
 	ID     string
+}
+
+func (p *PromptAction) Message() proto.Message {
+	return p.prompt
 }
 
 func (p *PromptAction) GetId() string {

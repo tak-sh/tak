@@ -179,6 +179,10 @@ func Run(c *engine.Context, s *Script, st stepper.Stepper, o ...opts.Opt[RunOpts
 }
 
 func New(s *v1beta1.Script) (*Script, error) {
+	if s == nil {
+		return nil, except.NewInvalid("missing")
+	}
+
 	out := &Script{
 		Steps:   make([]*step.Step, 0, len(s.Steps)),
 		Signals: make([]*step.ConditionalSignal, len(s.Signals)),

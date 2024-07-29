@@ -6,6 +6,7 @@ import (
 	"github.com/tak-sh/tak/generated/go/api/script/v1beta1"
 	"github.com/tak-sh/tak/pkg/except"
 	"github.com/tak-sh/tak/pkg/headless/engine"
+	"google.golang.org/protobuf/proto"
 	"net/url"
 	"time"
 )
@@ -24,6 +25,10 @@ var _ Action = &Nav{}
 type Nav struct {
 	*v1beta1.Action_Nav
 	ID string
+}
+
+func (n *Nav) Message() proto.Message {
+	return n.Action_Nav
 }
 
 func (n *Nav) GetId() string {
